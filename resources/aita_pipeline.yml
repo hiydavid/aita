@@ -1,0 +1,29 @@
+resources:
+  pipelines:
+    aita_sdp:
+      name: aita_sdp
+      catalog: ${var.catalog}
+      schema: ${var.silver_schema}
+      serverless: true
+      root_path: ../src/pipeline
+      libraries:
+        - glob:
+            include: ../src/pipeline/**/*.sql
+      configuration:
+        catalog: ${var.catalog}
+        bronze_schema: ${var.bronze_schema}
+        silver_schema: ${var.silver_schema}
+        gold_schema: ${var.gold_schema}
+        landing_path: ${var.landing_path}
+
+  jobs:
+    aita_pipeline:
+      name: aita_pipeline
+      performance_target: STANDARD
+      tags:
+        aidevkit_project: ai-dev-kit
+      tasks:
+        - task_key: sdp_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.aita_sdp.id}
+            full_refresh: false

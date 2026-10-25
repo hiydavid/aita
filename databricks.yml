@@ -1,0 +1,24 @@
+bundle:
+  name: aita
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    default: genie_workbench_dev_catalog
+  bronze_schema:
+    default: aita_bronze
+  silver_schema:
+    default: aita_silver
+  gold_schema:
+    default: aita_gold
+  landing_path:
+    default: /Volumes/genie_workbench_dev_catalog/aita_bronze/landing
+
+targets:
+  dev:
+    default: true
+    mode: development
+    workspace:
+      profile: genie-workbench

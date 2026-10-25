@@ -1,0 +1,64 @@
+# Aita Build Progress
+
+Last updated: October 24, 2026
+
+## Completed
+
+### Bundle Setup
+
+- Created `databricks.yml` with variables for the catalog, bronze, silver, and gold schemas, and landing path.
+- Configured the `dev` target to use the `genie-workbench` profile.
+- Created `resources/aita_pipeline.yml` with the serverless `aita_sdp` pipeline.
+- Set the pipeline default schema to `aita_silver` and passed all bundle variables as pipeline configuration.
+- Added the `aita_pipeline` Lakeflow Job, which currently runs the SDP pipeline task in STANDARD performance mode.
+- Successfully validated the bundle configuration.
+
+### Synthetic Data
+
+- Created `src/generate/generate_data.py` using deterministic PySpark with seed `20261024`.
+- The generator creates the `aita_bronze` schema and `landing` volume when needed.
+- Generated approximately 20,000 workers over 24 months with the seven planted business patterns from the pipeline specification.
+- Wrote all 12 datasets to `/Volumes/genie_workbench_dev_catalog/aita_bronze/landing` using the specified CSV and JSON formats.
+- Created `src/generate/pattern_checks.sql` to validate every planted pattern directly from the landing files.
+- Ran the generator and SQL checks using the `genie-workbench` profile.
+
+## Generated Data
+
+| Dataset | Rows |
+|---|---:|
+| workers | 20,000 |
+| job_history | 28,504 |
+| org_units | 72 |
+| jobs | 60 |
+| engagement_surveys | 155,063 |
+| exit_interviews | 1,161 |
+| team_productivity | 1,728 |
+| performance_reviews | 40,000 |
+| compensation | 40,000 |
+| requisitions | 2,400 |
+| applications | 28,800 |
+| application_events | 86,240 |
+
+Total generated rows: 404,028.
+
+## Pattern Results
+
+| Pattern | Status | Key evidence |
+|---|---|---|
+| Contact-center attrition spike | PASS | 108 spike exits; 95.4% under three target managers |
+| Stalled strategic high performers | PASS | 506 qualifying workers |
+| Fraud-operations burnout | PASS | Engagement fell 1.537 points and overtime rose 2.456x |
+| Standout managers | PASS | 3 qualifying managers |
+| GenAI internal mobility | PASS | 738 qualifying internal applications |
+| Licensed-role hiring friction | PASS | Licensed roles took 2.118x as long to fill |
+| Contact-center backfills | PASS | 164 post-spike backfills versus 3 in the baseline period |
+
+Detailed execution evidence is stored in `evidence/generation_summary.md`.
+
+## Next Steps
+
+1. Create `src/pipeline/bronze/ingest.sql` with one streaming table per landing dataset.
+2. Add the pipeline SQL library path to `resources/aita_pipeline.yml` once `src/pipeline` exists.
+3. Deploy and run the bronze layer, then reconcile bronze row counts with the landing files.
+4. Implement the silver conformance, expectations, AUTO CDC history, and AI Function enrichment.
+5. Implement the gold star schema and `talent_watchlist` materialized view.

@@ -5,10 +5,6 @@ resources:
       catalog: ${var.catalog}
       schema: ${var.silver_schema}
       serverless: true
-      root_path: ../src/pipeline
-      libraries:
-        - glob:
-            include: ../src/pipeline/**/*.sql
       configuration:
         catalog: ${var.catalog}
         bronze_schema: ${var.bronze_schema}

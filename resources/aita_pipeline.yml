@@ -8,7 +8,7 @@ resources:
       root_path: ../src/pipeline
       libraries:
         - glob:
-            include: ../src/pipeline/bronze/**
+            include: ../src/pipeline/**
       configuration:
         catalog: ${var.catalog}
         bronze_schema: ${var.bronze_schema}

@@ -148,13 +148,6 @@ Save the run output for each layer to `evidence/`.
 - Use the pipeline parameters for catalog and schema names, never hardcoded values.
 - Check exact Genie Code CLI commands and flags in its own help; the public docs mainly cover Genie Code in the Pipelines Editor.
 
-**Example prompts**
-- *Setup:* "Read docs/pipeline_spec.md and docs/environment.md. Create databricks.yml with variables catalog=genie_workbench_dev_catalog, bronze_schema=aita_bronze, silver_schema=aita_silver, gold_schema=aita_gold, landing_path=/Volumes/genie_workbench_dev_catalog/aita_bronze/landing, and a dev target using profile genie-workbench. Create resources/aita_pipeline.yml with a serverless SDP pipeline (default schema aita_silver) that passes these as configuration parameters, plus the aita_pipeline job."
-- *Generator:* "Write src/generate/generate_data.py that generates the 12 datasets in the spec for about 20,000 employees over 24 months with a fixed seed, writing CSV and JSON to the landing_path folders and building in the 7 planted patterns. Then write src/generate/pattern_checks.sql proving each pattern. Run both against profile genie-workbench and show the results."
-- *Bronze:* "Create src/pipeline/bronze/ingest.sql with one streaming table per landing folder in the bronze schema, using read_files and adding _source_file and _ingested_at. Use the pipeline parameters for names. Deploy and run the bundle, then show row counts per table."
-- *Silver AI:* "In src/pipeline/silver/workforce.sql, create streaming table exit_interviews_enriched in the silver schema from bronze exit_interviews. Use ai_classify on exit_comment with labels compensation, manager, schedule and workload, career growth, relocation, other, and add ai_analyze_sentiment. Add an expectation that exit_comment is not empty. Limit to 200 rows, deploy, run, and show 20 sample outputs."
-- *Gold:* "Create fact_requisition in the gold schema with time_to_fill_days, backfill flag and licensed flag from silver requisitions and gold dim_job. Validate one row per requisition."
-
 **What to show (demo and evidence)**
 - The pipeline graph in the workspace UI: landing files → bronze → silver → gold, across the three schemas.
 - Data previews: a raw file, a bronze row, an enriched silver row with the text and its AI label side by side, and a gold table.

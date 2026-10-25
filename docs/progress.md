@@ -66,8 +66,28 @@ Detailed execution evidence is stored in `evidence/generation_summary.md`.
 
 Detailed bronze execution evidence is stored in `evidence/bronze_ingestion_summary.md`.
 
+### Silver Exit Interview AI Sample
+
+- Created `src/pipeline/silver/workforce.sql` with `exit_interviews_enriched` in the silver schema.
+- Added `ai_classify` with the six requested exit-reason labels and `ai_analyze_sentiment`.
+- Added the warn-only `exit_comment_not_empty` expectation.
+- Limited the streaming-table sample to 200 rows for review and cost control.
+- Deployed the bundle and completed job run `903360430328551` successfully.
+- Verified 200 expectation passes, zero failures, and reviewed 20 AI outputs.
+
+Detailed sample outputs are stored in `evidence/silver_exit_interviews_ai_sample.md`.
+
 ## Next Steps
 
-1. Implement the silver conformance, expectations, and AUTO CDC history without AI Functions.
-2. Add the silver AI Function enrichment on a controlled sample and review outputs.
-3. Implement the gold star schema and `talent_watchlist` materialized view.
+1. Commit the current silver AI sample checkpoint under the project owner's account with a clear layer-specific message.
+2. Implement the silver conformance, expectations, and AUTO CDC history without AI Functions.
+3. Tune the exit-reason labels, remove the 200-row limit, perform a targeted full refresh or equivalent state reset, and reconcile all 1,161 exit interviews.
+4. Add the remaining silver AI Function enrichments on controlled samples, review and tune their outputs, remove their limits, and fully refresh each production table.
+5. Verify or create the `aita_silver` and `aita_gold` schemas before adding further silver and gold objects.
+6. Implement the gold dimensions, facts, and `talent_watchlist` materialized view, then validate table grain and join fan-out.
+7. Define the gold metric views once their specifications are available.
+8. Extend `aita_pipeline` with the `generate_data`, `sync_lakebase`, and `evidence_report` tasks described in the environment specification.
+9. Sync `talent_watchlist` to Lakebase after successful pipeline updates.
+10. Complete evidence for bronze metadata and rescued-data quality, silver and gold row counts, expectations, AI samples, grain checks, and pipeline runs.
+11. Verify the final pipeline graph, Catalog Explorer lineage, and representative raw, bronze, silver, and gold data previews.
+12. Commit each remaining completed layer under the project owner's account with a clear message.

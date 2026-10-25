@@ -1,6 +1,6 @@
 # Aita Build Progress
 
-Last updated: October 24, 2026
+Last updated: October 25, 2026
 
 ## Completed
 
@@ -55,10 +55,19 @@ Total generated rows: 404,028.
 
 Detailed execution evidence is stored in `evidence/generation_summary.md`.
 
+### Bronze Ingestion
+
+- Created `src/pipeline/bronze/ingest.sql` with one Auto Loader streaming table per landing dataset.
+- Parameterized the catalog, bronze schema, and landing paths through the SDP pipeline configuration.
+- Added `_source_file`, `_ingested_at`, key-column schema hints, and `_rescued_data` support to every table.
+- Added the bronze SQL library and pipeline root path to `resources/aita_pipeline.yml`.
+- Deployed the bundle and completed job run `65455966715028` successfully.
+- Reconciled all 12 bronze tables to the landing datasets with 404,028 matching rows.
+
+Detailed bronze execution evidence is stored in `evidence/bronze_ingestion_summary.md`.
+
 ## Next Steps
 
-1. Create `src/pipeline/bronze/ingest.sql` with one streaming table per landing dataset.
-2. Add the pipeline SQL library path to `resources/aita_pipeline.yml` once `src/pipeline` exists.
-3. Deploy and run the bronze layer, then reconcile bronze row counts with the landing files.
-4. Implement the silver conformance, expectations, AUTO CDC history, and AI Function enrichment.
-5. Implement the gold star schema and `talent_watchlist` materialized view.
+1. Implement the silver conformance, expectations, and AUTO CDC history without AI Functions.
+2. Add the silver AI Function enrichment on a controlled sample and review outputs.
+3. Implement the gold star schema and `talent_watchlist` materialized view.

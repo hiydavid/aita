@@ -79,15 +79,34 @@ Detailed sample outputs are stored in `evidence/silver_exit_interviews_ai_sample
 
 ## Next Steps
 
+### Phase 1: Checkpoint and Foundations
+
 1. Commit the current silver AI sample checkpoint under the project owner's account with a clear layer-specific message.
-2. Implement the silver conformance, expectations, and AUTO CDC history without AI Functions.
-3. Tune the exit-reason labels, remove the 200-row limit, perform a targeted full refresh or equivalent state reset, and reconcile all 1,161 exit interviews.
-4. Add the remaining silver AI Function enrichments on controlled samples, review and tune their outputs, remove their limits, and fully refresh each production table.
-5. Verify or create the `aita_silver` and `aita_gold` schemas before adding further silver and gold objects.
-6. Implement the gold dimensions, facts, and `talent_watchlist` materialized view, then validate table grain and join fan-out.
-7. Define the gold metric views once their specifications are available.
-8. Extend `aita_pipeline` with the `generate_data`, `sync_lakebase`, and `evidence_report` tasks described in the environment specification.
-9. Sync `talent_watchlist` to Lakebase after successful pipeline updates.
-10. Complete evidence for bronze metadata and rescued-data quality, silver and gold row counts, expectations, AI samples, grain checks, and pipeline runs.
-11. Verify the final pipeline graph, Catalog Explorer lineage, and representative raw, bronze, silver, and gold data previews.
-12. Commit each remaining completed layer under the project owner's account with a clear message.
+2. Verify or create the `aita_silver` and `aita_gold` schemas.
+3. Validate bronze `_source_file`, `_ingested_at`, and `_rescued_data`, then save the results as evidence.
+
+### Phase 2: Silver Core
+
+1. Implement the silver conformance, typing, and deduplication tables without AI Functions.
+2. Implement the SCD Type 2 `worker_history` table with AUTO CDC.
+3. Add the specified silver expectations, deploy and run the layer, and record expectation and row-count evidence.
+
+### Phase 3: Silver AI
+
+1. Tune the exit-reason labels, remove the 200-row limit, perform a targeted full refresh or equivalent state reset, and reconcile all 1,161 exit interviews.
+2. Add the remaining silver AI Function enrichments on controlled samples and review their outputs.
+3. Tune the remaining AI enrichments, remove their limits, fully refresh each production table, and record sample and expectation evidence.
+
+### Phase 4: Gold and Serving
+
+1. Implement the gold dimensions, facts, and `talent_watchlist` materialized view.
+2. Validate gold table grain, join fan-out, row counts, and watchlist rules.
+3. Define the gold metric views once their specifications are available.
+4. Sync `talent_watchlist` to Lakebase after successful pipeline updates.
+
+### Phase 5: Orchestration and Evidence
+
+1. Extend `aita_pipeline` with the `generate_data`, `sync_lakebase`, and `evidence_report` tasks described in the environment specification.
+2. Complete the remaining silver and gold run evidence, expectation results, AI samples, and grain checks.
+3. Verify the final pipeline graph, Catalog Explorer lineage, and representative raw, bronze, silver, and gold data previews.
+4. Commit each remaining completed layer under the project owner's account with a clear message.

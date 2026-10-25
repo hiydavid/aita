@@ -120,3 +120,64 @@ FROM STREAM(org_unit_changes)
 KEYS (org_unit_id)
 SEQUENCE BY STRUCT(_ingested_at, _source_file)
 STORED AS SCD TYPE 1;
+
+CREATE OR REFRESH PRIVATE MATERIALIZED VIEW job_description_ai_signals
+AS
+SELECT
+  job_ai_source.job_description,
+  exposure_result:response[0]::STRING AS genai_exposure_tier,
+  exposure_result:error_message::STRING AS genai_exposure_error,
+  skills_result:response:required_skills::ARRAY<STRING> AS required_skills,
+  skills_result:error_message::STRING AS required_skills_error
+FROM (
+  SELECT
+    job_text.job_description,
+    ai_classify(
+      job_text.job_description,
+      '{"high":"Core work includes high-volume rules, repetitive case decisions, scripted knowledge, summarization, routing, or similar recurring tasks that generative AI can substantially accelerate even when human empathy or escalation remains essential","medium":"Generative AI can materially assist analytical, data science, data engineering, or software engineering work, but expert design, validation, and judgment remain central","low":"Core work centers customer relationships, leadership, licensed accountability, cybersecurity, enterprise architecture, physical presence, or generic banking delivery with limited explicit generative AI substitution"}',
+      map(
+        'version', '2.0',
+        'instructions', 'Classify the role described, using both its title and named tasks. High includes contact-center and operations work with scripted, summarization, routing, document-review, rules, or repetitive case tasks. Medium includes hands-on data science, data engineering, and software engineering. Low includes cybersecurity, enterprise architecture, relationship, leadership, licensed, physical, and generic banking roles unless high-exposure tasks are explicit.'
+      )
+    ) AS exposure_result,
+    ai_extract(
+      job_text.job_description,
+      '{"required_skills":{"type":"array","items":{"type":"string"}}}',
+      map(
+        'version', '2.0',
+        'instructions', 'Extract only skills, capabilities, domain knowledge, tools, licenses, or behaviors explicitly named by the job description. Do not convert the job title into a skill or infer capabilities that are not stated. Return concise normalized skill phrases.'
+      )
+    ) AS skills_result
+  FROM (
+    SELECT trim(job_description) AS job_description
+    FROM `${catalog}`.`${bronze_schema}`.`jobs`
+    WHERE job_description IS NOT NULL
+      AND trim(job_description) <> ''
+    GROUP BY trim(job_description)
+  ) AS job_text
+) AS job_ai_source;
+
+CREATE OR REFRESH STREAMING TABLE jobs_enriched (
+  CONSTRAINT job_code_not_null EXPECT (job_code IS NOT NULL)
+)
+AS
+SELECT
+  upper(trim(job.job_code)) AS job_code,
+  trim(job.job_title) AS job_title,
+  trim(job.job_family) AS job_family,
+  trim(job.job_level) AS job_level,
+  trim(job.business_line) AS business_line,
+  CAST(job.licensed_role_flag AS BOOLEAN) AS licensed_role_flag,
+  CAST(job.strategic_role_flag AS BOOLEAN) AS strategic_role_flag,
+  trim(job.expected_genai_exposure_tier) AS expected_genai_exposure_tier,
+  trim(job.job_description) AS job_description,
+  signals.genai_exposure_tier,
+  signals.genai_exposure_error,
+  signals.required_skills,
+  signals.required_skills_error,
+  job._rescued_data,
+  job._source_file,
+  job._ingested_at
+FROM STREAM(`${catalog}`.`${bronze_schema}`.`jobs`) AS job
+LEFT JOIN job_description_ai_signals AS signals
+  ON trim(job.job_description) = signals.job_description;

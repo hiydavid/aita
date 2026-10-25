@@ -67,7 +67,7 @@ That's 12 datasets, 6 of which carry free text.
 | `performance_enriched` | Streaming table | Ratings plus skills | Rating in the allowed set (drop) | `ai_extract` → `demonstrated_skills` |
 | `applications_enriched` | Streaming table | Candidate funnel plus reasons | Requisition exists (warn) | `ai_extract` → `candidate_skills`; `ai_classify` → `decline_reason` (compensation, competing offer, location, process too slow, role fit, other) |
 
-AI Functions run on silver **streaming tables**. Each text record is processed once, and gold refreshes reuse the stored results.
+AI Functions run in private silver materialized views over distinct normalized text values. The published silver streaming tables join those cached signals back to every source row, so repeated synthetic comments are inferred once while gold refreshes reuse the stored results.
 
 **Gold (materialized views, star schema)**
 
@@ -129,7 +129,7 @@ Confirm the current AI Function signatures and the AUTO CDC syntax before finali
 1. **Generator.** Write `generate_data.py` and `pattern_checks.sql`. Create the schemas and volume if needed, run the generator, and run the pattern checks.
 2. **Bronze.** Write `ingest.sql`, then deploy and run. Check that row counts match the landing files.
 3. **Silver without AI.** Typing, deduplication, SCD Type 2 and expectations. Deploy, run, and review expectation metrics.
-4. **Silver AI on a sample.** Add the AI Functions with a sample limit. Inspect about 20 outputs per function, tune the labels, then remove the limit.
+4. **Silver AI on a sample.** Add the AI Functions through bounded distinct-text lookup views. Inspect about 20 outputs per function, tune the labels, then materialize all distinct texts and join the cached signals back to the full streaming tables.
 5. **Gold.** Dimensions, facts and the watchlist. Check grain and join fan-out.
 6. **Evidence.** Query the pipeline event log for expectations and row counts, pull sample AI outputs, and write them as markdown into `evidence/`.
 

@@ -96,13 +96,18 @@ Detailed Phase 1 validation evidence is stored in `evidence/bronze_quality_summa
 
 Detailed Phase 2 execution evidence is stored in `evidence/silver_core_summary.md`.
 
-## Next Steps
-
 ### Phase 3: Silver AI
 
-1. Tune the exit-reason labels, remove the 200-row limit, perform a targeted full refresh or equivalent state reset, and reconcile all 1,161 exit interviews.
-2. Add the remaining silver AI Function enrichments on controlled samples and review their outputs.
-3. Tune the remaining AI enrichments, remove their limits, fully refresh each production table, and record sample and expectation evidence.
+- Implemented full-row `jobs_enriched`, `exit_interviews_enriched`, `engagement_enriched`, `performance_enriched`, and `applications_enriched` streaming tables.
+- Added the specified AI classifications, sentiment analysis, and skill extraction fields with explicit per-row AI error columns and preserved source provenance.
+- Reviewed bounded outputs, tuned job exposure, exit reason, engagement theme, and offer-decline labels, and corrected skill extraction to return plain string arrays.
+- Replaced per-row inference with six private materialized views over distinct normalized text, reducing a full refresh from approximately 383,492 AI calls to 152 while preserving all 225,084 enriched rows.
+- Completed cost-optimized pipeline update `dab347e2-e973-4b3c-9350-871b79a4014b` and final engagement refinement update `2cd52b9d-2486-4924-b7bd-15b8369f0ec8`.
+- Reconciled all five enriched tables with zero duplicate grains, rescued rows, AI errors, missing required AI outputs, or expectation failures.
+
+Detailed Phase 3 execution evidence is stored in `evidence/silver_ai_summary.md`.
+
+## Next Steps
 
 ### Phase 4: Gold and Serving
 

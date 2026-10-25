@@ -86,13 +86,17 @@ Detailed sample outputs are stored in `evidence/silver_exit_interviews_ai_sample
 
 Detailed Phase 1 validation evidence is stored in `evidence/bronze_quality_summary.md`.
 
-## Next Steps
-
 ### Phase 2: Silver Core
 
-1. Implement the silver conformance, typing, and deduplication tables without AI Functions.
-2. Implement the SCD Type 2 `worker_history` table with AUTO CDC.
-3. Add the specified silver expectations, deploy and run the layer, and record expectation and row-count evidence.
+- Implemented typed and conformed `workers`, `org_units`, `team_productivity`, `compensation`, `requisitions`, and `application_events` streaming tables.
+- Added keyed AUTO CDC Type 1 flows for grain-level deduplication and AUTO CDC Type 2 `worker_history` sequenced by event date and event ID.
+- Added the specified drop, fail, and warn expectations for workers, worker history, compensation, and requisitions.
+- Deployed the serverless pipeline and completed job run `332861017181304` with pipeline update `936675c5-59cd-498d-869d-50d35bc342f0`.
+- Reconciled 178,944 silver rows with zero duplicate grain rows, zero rescued rows, and zero expectation failures.
+
+Detailed Phase 2 execution evidence is stored in `evidence/silver_core_summary.md`.
+
+## Next Steps
 
 ### Phase 3: Silver AI
 

@@ -160,7 +160,7 @@ Detailed governance evidence is stored in `evidence/gold_comments.md` and `evide
 
 ### Phase 7: Metric Views and Grants
 
-1. Publish the eight grain-safe metric views defined in `docs/semantics_spec.md`: workforce, attrition, engagement, productivity, talent, talent skills, requisitions, and recruiting funnel.
+1. Validate the deployed metric-view YAML syntax for window measures and semantic formats, then publish the eight grain-safe views defined in `docs/semantics_spec.md`.
 2. Apply semantic-layer Unity Catalog grants from `src/semantic/grants.sql` and SQL warehouse permissions through workspace tooling.
 3. Reconcile every metric to direct Gold SQL, including multi-month rates, zero denominators, semi-additive headcount, stage conversions, and masked pay behavior.
 4. Record the results in `evidence/metric_view_checks.md` and preserve the completed Gold governance evidence without repeating Phase 5.

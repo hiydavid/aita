@@ -1,33 +1,14 @@
-# Aita Semantic Layer & Genie Agents Design
-
-## Metric views, Genie Agents, and access for Aita (Oct 25, 2026)
+# Aita Semantic Layer and Genie Agents Design
 
 ### Purpose
 
-This doc covers everything between the governed Gold tables in the Aita SDP design and the Aita app described by the App, Routing & Lakebase design:
-
-- **Access:** who can read and query the semantic layer.
-- **Semantic sources:** grain-safe helper views for definitions that span multiple Gold facts.
-- **Metric views:** the single governed definition of every reusable measure.
-- **Three domain Genie Agents:** Workforce & Attrition, Talent & Performance, and Recruiting.
-- **Cross-domain consistency:** shared keys, dates, and population rules used by the future routing agent.
-- **Creation and evaluation:** how the metric views and agents are deployed, benchmarked, and verified.
-
-Its outputs feed the routing agent: agent descriptions become tool descriptions, and benchmark questions seed the routing evaluation set.
+This document defines access, grain-safe semantic helpers, reusable metric views, three domain Genie Agents, cross-domain consistency, and publication gates between governed Gold and the future Aita routing app. Agent descriptions become routing tool descriptions, and benchmark questions seed routing evaluation.
 
 **Design principle:** calculations live in metric views, grain-changing logic lives in governed semantic helper views, behavior lives in agent configuration, and each agent remains narrow and domain-specific.
 
-### Target environment
+### Environment
 
-| Setting | Value |
-|---|---|
-| Catalog | `genie_workbench_dev_catalog` |
-| Semantic schema | `aita_gold` |
-| Source tables | Governed `aita_gold` dimensions, facts, and `talent_watchlist` |
-| CLI profile | `genie-workbench` |
-| Bundle target | `dev` |
-| SQL warehouse | One serverless warehouse resolved before deployment and passed as `warehouse_id` |
-| Build tool | Genie Code CLI, from the repo root |
+Environment values and commands are defined in `docs/environment.md`. The semantic layer uses governed Gold sources and a serverless SQL warehouse supplied through the bundle `warehouse_id` variable.
 
 ### Access and grants
 
@@ -237,44 +218,22 @@ The future routing agent answers cross-domain questions by calling multiple doma
     - "Which flagged employees in GenAI-exposed roles have applied internally?"
     - "Are stalled high performers more likely to be on the watchlist?"
 
-### Creation and deployment
+### Publication gates
 
-1. Add the targeted Gold prerequisite and build the three semantic helper views.
-2. Create and SQL-test all eight metric views before exposing them to an Agent.
-3. Resolve the serverless SQL warehouse and apply Unity Catalog and workspace-object grants.
-4. Commit each Agent as a parsed version-2 `serialized_space` JSON document under `src/genie/`.
-5. Create or update one Agent at a time through an idempotent deployment script, starting with Workforce & Attrition. Live Agent creation or update requires explicit approval.
-6. Validate every example and benchmark SQL with read-only execution before loading it into an Agent.
-7. Run the canonical benchmarks, fix calculation failures in the semantic layer and behavior failures in Agent configuration, then rerun.
+1. Build and validate the three grain-safe helper views, including the Gold prerequisite for talent recency.
+2. Create and SQL-test all eight metric views before exposing them to an Agent, including deployed syntax for window measures and semantic formats.
+3. Apply Unity Catalog and workspace-object grants using the approved principals and serverless warehouse.
+4. Store each Agent as parsed version-2 configuration and deploy one at a time through idempotent tooling; live creation or update requires explicit approval.
+5. Validate every example and benchmark query through read-only execution before adding it to an Agent.
+6. Fix calculation failures in the semantic layer and behavior failures in Agent configuration, then rerun the affected checks.
 
-The initial publication gate is at least 90% passing across 10 canonical benchmarks per Agent. Before the routing agent is productionized, expand each set to at least 30 valid items using additional phrasings and edge cases.
+Initial publication requires at least 90% passing across 10 canonical benchmarks per Agent. Before productionizing the routing agent, expand each set to at least 30 valid items with additional phrasings and edge cases.
 
-### Evaluation and evidence
+### Validation contract
 
-| Evidence file | Contents |
-|---|---|
-| `evidence/metric_view_checks.md` | Every key measure queried through its metric view and reconciled to direct Gold SQL, including zero-denominator and multi-month cases |
-| `evidence/semantic_grain_checks.md` | Helper-view uniqueness, row counts, join fan-out checks, latest-record checks, and compensation-mask propagation |
-| `evidence/genie_benchmarks.md` | Per Agent: question, expected answer, Agent answer, pass/fail result, and overall pass rate |
-| `evidence/genie_transcripts.md` | Two or three representative conversations per Agent, including generated SQL |
-| `evidence/mask_check.md` | Existing HR-admin and non-HR compensation verification from Gold governance |
+- Prove helper-view grain uniqueness, source reconciliation, latest-record selection, absence of join fan-out, and compensation-mask propagation.
+- Reconcile every key metric-view measure to direct Gold SQL, including multi-month, semi-additive, and zero-denominator cases.
+- Record each Agent benchmark's question, expected result, actual result, and pass/fail outcome, plus representative generated-SQL transcripts.
+- Preserve the Gold HR-admin and non-HR compensation-mask comparison in the consolidated reviewer evidence.
 
-### Repo layout additions
-
-| Path | Contents |
-|---|---|
-| `docs/semantics_spec.md` | This document |
-| `src/semantic/base_views.sql` | Grain-safe semantic helper views |
-| `src/semantic/metric_views.sql` | All metric-view definitions |
-| `src/semantic/grants.sql` | Unity Catalog grants for the semantic layer |
-| `src/genie/workforce_attrition.json` | Workforce & Attrition Agent configuration and benchmarks |
-| `src/genie/talent_performance.json` | Talent & Performance Agent configuration and benchmarks |
-| `src/genie/recruiting.json` | Recruiting Agent configuration and benchmarks |
-| `src/genie/create_agents.py` | Idempotent Agent create/update and workspace-permission tooling |
-
-### Remaining decisions before live publication
-
-1. Resolve the serverless SQL warehouse ID and add it as a bundle variable; do not hardcode it in SQL or Agent configuration.
-2. Confirm the approved members of `aita_users`, including the app service principal.
-3. Confirm the Lakebase destination and primary-key mapping for `talent_watchlist` in the App, Routing & Lakebase design.
-4. Validate the exact deployed metric-view YAML syntax for window measures and semantic formats in this workspace before publishing all eight views.
+Implementation status and unresolved deployment decisions are tracked only in `docs/progress.md`.

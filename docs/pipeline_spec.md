@@ -1,22 +1,18 @@
-# Aita SDP Design
-
-## Spark Declarative Pipelines design for Aita (Oct 24, 2026)
+# Aita Spark Declarative Pipeline Design
 
 ### Purpose
 
-The pipeline turns 12 synthetic HR datasets for a fictional bank into a governed gold star schema. Along the way, AI Functions turn six free-text fields into structured signals, and the pipeline builds a rule-based talent watchlist. The gold layer feeds three Genie Agents (Workforce & Attrition, Talent & Performance, Recruiting) and the Lakebase-synced watchlist.
-
-This doc is also the source for `docs/pipeline_spec.md`, the spec that Genie Code CLI builds from.
+The pipeline turns 12 synthetic HR datasets into a governed Gold star schema. AI Functions structure six free-text fields, and Gold feeds three domain Genie Agents plus a Lakebase-synced talent watchlist.
 
 ### Fictional bank
 
-- Name TBD (different from the fee refund build's bank). About 20,000 employees and 24 months of history, generated once with fixed seeds.
+- About 20,000 employees and 24 months of history, generated deterministically with fixed seeds.
 - **Business lines:** Consumer Banking (branches, contact centers), Wealth Management (licensed advisors), Commercial Banking (relationship managers), Operations (including fraud ops), Technology, Corporate Functions.
 - **Banking angle:** a `licensed_role_flag` on jobs (advisors, mortgage loan originators) drives the time-to-fill and hard-to-backfill story in Recruiting.
 
 ### Generated datasets
 
-Written by the generator to `/Volumes/genie_workbench_dev_catalog/aita_bronze/landing/<dataset>/`.
+Written to the landing volume defined in `docs/environment.md`.
 
 | Domain | Dataset | Grain | Format | Free text for AI Functions |
 |---|---|---|---|---|
@@ -33,8 +29,6 @@ Written by the generator to `/Volumes/genie_workbench_dev_catalog/aita_bronze/la
 | Recruiting | `applications` | candidate × requisition (source, internal worker_id if internal, stage, offer outcome) | JSON | `candidate_summary`, `offer_decline_comment` |
 | Recruiting | `application_events` | application × stage change (applied, screen, interview, offer, hired, rejected, declined) | CSV | |
 
-That's 12 datasets, 6 of which carry free text.
-
 ### Planted patterns (each one answers a target question)
 
 - An attrition spike in two contact centers after a schedule change, concentrated under three managers. Exit comments mention schedules and workload.
@@ -47,7 +41,7 @@ That's 12 datasets, 6 of which carry free text.
 
 ### Layers
 
-**Catalog and schemas:** `genie_workbench_dev_catalog` with `aita_bronze` (plus the `landing` volume), `aita_silver` and `aita_gold`. Table names below are shown without the catalog prefix.
+Catalog, schemas, and landing paths are defined in `docs/environment.md`; table names below omit the catalog prefix.
 
 **Bronze (one streaming table per dataset)**
 
@@ -85,7 +79,7 @@ AI Functions run in private silver materialized views over distinct normalized t
 | `fact_application_funnel` | application: stages reached, days per stage, decline reason, internal flag | Recruiting |
 | `talent_watchlist` | flagged employee | Watchlist tab; Workforce & Attrition |
 
-Metric views (defined in the main Aita doc) sit on top of gold.
+Metric views defined in `docs/semantics_spec.md` sit on top of Gold.
 
 ### Talent watchlist (gold)
 
@@ -100,92 +94,20 @@ Metric views (defined in the main Aita doc) sit on top of gold.
 
 Columns: employee_id, business_line, risk_flags, reasons, signal_count, as_of_date. It syncs to Lakebase after each pipeline run.
 
-### Repo and source layout
-
-| Path | Contents |
-|---|---|
-| `databricks.yml` | Bundle variables (catalog, schemas, landing_path); `dev` target using profile `genie-workbench` |
-| `resources/aita_pipeline.yml` | SDP pipeline and `aita_pipeline` job definitions |
-| `docs/pipeline_spec.md` | This doc |
-| `docs/environment.md` | Profile, catalog, schemas and volume path (context for Genie Code CLI) |
-| `src/generate/generate_data.py` | Seeded synthetic data generator |
-| `src/generate/pattern_checks.sql` | SQL proving each planted pattern |
-| `src/pipeline/bronze/ingest.sql` | Bronze streaming tables |
-| `src/pipeline/silver/core.sql`, `workforce.sql`, `talent.sql`, `recruiting.sql` | Silver tables, expectations and AI Functions |
-| `src/pipeline/gold/dimensions.sql`, `facts.sql`, `talent_watchlist.sql` | Gold star schema and watchlist |
-| `evidence/` | Run summaries, expectation results, sample AI outputs |
-
-Confirm the current AI Function signatures and the AUTO CDC syntax before finalizing the SQL.
-
 ### Gold governance
 
-Governance that belongs to the gold tables themselves is defined in the pipeline SQL, so it ships and versions with the tables. Grants, the mask verification and the lineage walkthrough live in the Semantic Layer & Genie Agents doc.
+Governance intrinsic to Gold tables is versioned in pipeline SQL. Access grants and semantic validation are defined in `docs/semantics_spec.md`.
 
-**Table and column comments**
-- Every gold table and every gold column gets a business-friendly comment in its `CREATE OR REFRESH` statement. Good comments help Genie pick the right columns and describe the table to anyone browsing the catalog.
-- Each table comment states the grain, what one row represents, and its main use (for example, "One row per voluntary or involuntary exit. Includes the AI-classified exit reason and a regrettable flag. Used for attrition analysis.").
-- Each column comment gives the meaning, units and allowed values. For AI-derived columns, it also names the source text field and the label set (for example, "`exit_reason`: AI-classified from exit_comment using ai_classify. Values: compensation, manager, schedule and workload, career growth, relocation, other.").
-- Flags and derived measures state their rule (for example, "`regrettable_flag`: true when the exiting employee had a top-two rating in their last review.").
-- Silver and bronze tables get a short table comment only.
+**Comments:** Every Gold table and column has a business-friendly comment in its `CREATE OR REFRESH` statement. Table comments state grain, row meaning, and use. Column comments state meaning, units, and allowed values; AI fields also identify source text and labels, while flags and derived measures state their rules. Bronze and Silver require short table comments only.
 
 **Compensation column mask**
-- **Masked columns:** `base_salary`, `bonus` and `pay_position_to_midpoint` on `aita_gold.fact_compensation`.
-- **Resolved names:** silver `annual_bonus` is published as gold `bonus`; the former `compa_ratio` name is replaced by `pay_position_to_midpoint`.
-- **Mask function:** `aita_gold.mask_compensation(value)` returns the value for members of the `aita_hr_admin` group and NULL for everyone else.
-- **Defined in the pipeline:** the mask is attached in the `CREATE OR REFRESH MATERIALIZED VIEW` statement for `fact_compensation`. Row filters and column masks on pipeline tables should be added, updated or dropped through the `CREATE OR REFRESH` statement rather than with `ALTER TABLE`.
-- **Created before the first run:** the mask function and the `aita_hr_admin` group are created once, in setup or the `aita_setup` job, before the pipeline runs.
-- **Band fields stay unmasked:** `band_min`, `band_mid` and `band_max` are policy data, not personal data, so leaders can still ask "how many people sit below midpoint" in aggregate.
+- Mask `base_salary`, `bonus`, and `pay_position_to_midpoint` on `aita_gold.fact_compensation`; Silver `annual_bonus` publishes as `bonus` and `compa_ratio` is replaced by `pay_position_to_midpoint`.
+- `aita_gold.mask_compensation(value)` returns values only to `aita_hr_admin`; create the group and function before the first pipeline run.
+- Attach and maintain the mask through `CREATE OR REFRESH MATERIALIZED VIEW`, not `ALTER TABLE`.
+- Keep `band_min`, `band_mid`, and `band_max` unmasked so aggregate band-position questions remain available.
 
-**Resolved attrition rule**
-- `regrettable_flag` is true when the exiting employee had `rating_numeric` 4 or 5 in their latest performance review; it is false when the latest rating was lower or absent.
+**Attrition:** `regrettable_flag` is true when the exiting employee's latest `rating_numeric` is 4 or 5; otherwise it is false.
 
-**No row filters.** All users see all business lines in v1. Row-level coverage by business line, using ABAC, is the production roadmap.
+**No row filters:** All users see all business lines in v1; business-line ABAC remains a production roadmap item.
 
-**Evidence**
-- `evidence/gold_comments.md`: output of `DESCRIBE TABLE EXTENDED` for two or three gold tables, showing the comments.
-- `evidence/mask_check.md`: the same `SELECT` on `fact_compensation` run as an HR admin and as a non-HR user, with salaries visible for the first and NULL for the second.
-
-### Building it with Genie Code CLI
-
-**Setup (once)**
-1. Clone the repo locally and run Genie Code CLI from the repo root, so every generated file lands in Git under my own commits.
-2. Commit this doc as `docs/pipeline_spec.md`, plus `docs/environment.md` with the target environment table above.
-3. Confirm the CLI profile works: `databricks current-user me --profile genie-workbench`.
-4. First prompt: have Genie Code read both docs, then create `databricks.yml` (variables, `dev` target using profile `genie-workbench`) and `resources/aita_pipeline.yml` (serverless pipeline with default catalog and schema, configuration parameters, and the job).
-
-**Layer-by-layer workflow**
-1. **Generator.** Write `generate_data.py` and `pattern_checks.sql`. Create the schemas and volume if needed, run the generator, and run the pattern checks.
-2. **Bronze.** Write `ingest.sql`, then deploy and run. Check that row counts match the landing files.
-3. **Silver without AI.** Typing, deduplication, SCD Type 2 and expectations. Deploy, run, and review expectation metrics.
-4. **Silver AI on a sample.** Add the AI Functions through bounded distinct-text lookup views. Inspect about 20 outputs per function, tune the labels, then materialize all distinct texts and join the cached signals back to the full streaming tables.
-5. **Gold.** Dimensions, facts and the watchlist. Check grain and join fan-out.
-6. **Evidence.** Query the pipeline event log for expectations and row counts, pull sample AI outputs, and write them as markdown into `evidence/`.
-
-**Deploy and run (after each layer)**
-- `databricks bundle validate -t dev --profile genie-workbench`
-- `databricks bundle deploy -t dev --profile genie-workbench`
-- `databricks bundle run aita_pipeline -t dev --profile genie-workbench`
-
-Save the run output for each layer to `evidence/`.
-
-**Working rules**
-- One layer per prompt, using exact table and column names from the spec.
-- Review every plan and diff before approving, so I can explain each choice in the roleplay. The grader flags purely vibe-coded builds.
-- Commit after each layer under my own account, with clear messages.
-- Use SQL for the pipeline, because it's easy for the grader to read. Use Python for the generator.
-- Use the pipeline parameters for catalog and schema names, never hardcoded values.
-- Check exact Genie Code CLI commands and flags in its own help; the public docs mainly cover Genie Code in the Pipelines Editor.
-
-**What to show (demo and evidence)**
-- The pipeline graph in the workspace UI: landing files → bronze → silver → gold, across the three schemas.
-- Data previews: a raw file, a bronze row, an enriched silver row with the text and its AI label side by side, and a gold table.
-- Expectation metrics per table.
-- Lineage in Catalog Explorer, from the volume through to gold.
-
-### Open questions
-
-1. Fictional bank name.
-2. Final label sets for each `ai_classify` call (tune after the sample run).
-3. Current AI Function signatures and AUTO CDC syntax (check before writing the silver SQL).
-4. Whether I can create schemas and volumes in `genie_workbench_dev_catalog`, or need them created up front.
-5. Exact Genie Code CLI commands and flags.
+Implementation workflow, environment settings, validation expectations, and contributor rules live in `AGENTS.md`, `docs/environment.md`, and `docs/progress.md`.

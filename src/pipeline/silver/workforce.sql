@@ -16,7 +16,8 @@ SELECT
   _ingested_at
 FROM STREAM(`${catalog}`.`${bronze_schema}`.`team_productivity`);
 
-CREATE OR REFRESH STREAMING TABLE team_productivity;
+CREATE OR REFRESH STREAMING TABLE team_productivity
+COMMENT 'Typed monthly productivity, customer service, overtime, and quality measures at team grain.';
 
 CREATE FLOW team_productivity_cdc AS AUTO CDC INTO team_productivity
 FROM STREAM(team_productivity_changes)
@@ -25,6 +26,7 @@ SEQUENCE BY STRUCT(_ingested_at, _source_file)
 STORED AS SCD TYPE 1;
 
 CREATE OR REFRESH PRIVATE MATERIALIZED VIEW exit_comment_ai_signals
+COMMENT 'Pipeline-private AI exit reasons and sentiment at one row per distinct normalized exit comment.'
 AS
 SELECT
   exit_ai_source.exit_comment,
@@ -56,6 +58,7 @@ CREATE OR REFRESH STREAMING TABLE exit_interviews_enriched (
     exit_comment IS NOT NULL AND trim(exit_comment) <> ''
   )
 )
+COMMENT 'Typed exit interviews enriched with AI-classified exit reason and AI-analyzed sentiment.'
 AS
 SELECT
   upper(trim(exit_interview.exit_interview_id)) AS exit_interview_id,
@@ -78,6 +81,7 @@ LEFT JOIN exit_comment_ai_signals AS signals
   ON trim(exit_interview.exit_comment) = signals.exit_comment;
 
 CREATE OR REFRESH PRIVATE MATERIALIZED VIEW engagement_comment_ai_signals
+COMMENT 'Pipeline-private AI sentiment and theme at one row per distinct normalized engagement comment.'
 AS
 SELECT
   engagement_ai_source.comment,
@@ -109,6 +113,7 @@ CREATE OR REFRESH STREAMING TABLE engagement_enriched (
     engagement_score BETWEEN 1 AND 5
   ) ON VIOLATION DROP ROW
 )
+COMMENT 'Typed employee engagement responses enriched with AI-analyzed sentiment and AI-classified comment theme.'
 AS
 SELECT
   upper(trim(engagement.survey_response_id)) AS survey_response_id,

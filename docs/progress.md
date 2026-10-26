@@ -118,8 +118,8 @@ Detailed gold dimension execution evidence is stored in `evidence/gold_dimension
 
 ### Phase 4: Gold Facts
 
-- Implemented all eight specified gold facts for monthly headcount, attrition, engagement, productivity, performance, masked compensation, requisitions, and application funnels.
-- Added half-open SCD Type 2 temporal joins, source-driven headcount months, readable business flags, stage-duration measures, and pay-position outputs with no raw compensation amounts.
+- Implemented all eight specified gold facts for monthly headcount, attrition, engagement, productivity, performance, compensation, requisitions, and application funnels.
+- Added half-open SCD Type 2 temporal joins, source-driven headcount months, readable business flags, stage-duration measures, and an initial omission-based compensation privacy contract later superseded by Phase 5 masks.
 - Deployed the serverless pipeline and completed job run `24365280429776` with pipeline update `9f70c7ed-566a-4fc9-8793-de4d05e54ec5`.
 - Reconciled 286,588 gold fact rows with zero duplicate or null grains, source-count differences, join fan-out, orphan dimension keys, temporal misses, negative funnel durations, or exposed raw pay columns.
 
@@ -136,17 +136,19 @@ Detailed gold fact execution evidence is stored in `evidence/gold_facts_summary.
 
 Detailed watchlist execution evidence is stored in `evidence/gold_talent_watchlist_summary.md`.
 
-## Next Steps
-
 ### Phase 5: Gold Governance
 
-1. Reconcile the implemented gold contract with the new governance specification before changing SQL: replace the current omission-based compensation privacy model with governed masked columns, resolve `bonus` versus `annual_bonus` and `pay_position_to_midpoint` versus `compa_ratio`, and confirm the final `regrettable_flag` rule.
-2. Provision or verify the `aita_hr_admin` group and `${catalog}.${gold_schema}.mask_compensation` function in one-time setup or an `aita_setup` task that completes before the SDP pipeline refreshes governed tables.
-3. Add business-friendly comments to every gold table and column, including grains, units, allowed values, AI source fields and label sets, and explicit flag and derived-measure rules; add short table comments to bronze and silver tables.
-4. Attach masks for `base_salary`, `bonus`, and `pay_position_to_midpoint` directly in the `fact_compensation` `CREATE OR REFRESH MATERIALIZED VIEW`, keep band fields visible, and add no row filters in v1.
-5. Validate comments with `DESCRIBE TABLE EXTENDED`, test compensation visibility as both an HR admin and a non-HR user, and save the results in `evidence/gold_comments.md` and `evidence/mask_check.md`.
+- Reconciled the governed Gold contract: silver `annual_bonus` publishes as `bonus`, `compa_ratio` is replaced by `pay_position_to_midpoint`, and `regrettable_flag` uses a latest-review `rating_numeric` of 4 or 5.
+- Created the `aita_hr_admin` workspace group, added the approved HR administrator, and created `genie_workbench_dev_catalog.aita_gold.mask_compensation`.
+- Added business-friendly comments to all 13 Gold tables and all 187 Gold columns, with zero missing comments; added short comments to all 24 published Bronze and Silver tables and to the pipeline-private Silver AI lookup views.
+- Published `base_salary`, `bonus`, and `pay_position_to_midpoint` with pipeline-attached masks while leaving `band_min`, `band_mid`, and `band_max` visible; added no row filters.
+- Deployed the serverless pipeline and completed job run `74640997233422` with pipeline update `baf23f7b-cfd2-421f-b52a-6e1f089cb3fe`.
+- Verified the same compensation query as a non-HR user and an HR administrator: 40,000 masked rows for the non-member, 40,000 visible rows for the member, and zero missing band values in either case.
+- Reconciled 40,000 distinct compensation records, 1,161 attrition events with zero regrettable-rule mismatches, and an unchanged 3,427-row talent watchlist.
 
-Gold Governance must complete before metric-view publication, Genie Agent exposure, or Lakebase sync activation. Business-line ABAC row filtering remains a production-roadmap item.
+Detailed governance evidence is stored in `evidence/gold_comments.md` and `evidence/mask_check.md`.
+
+## Next Steps
 
 ### Phase 6: Orchestration, Semantic Serving, and Evidence
 

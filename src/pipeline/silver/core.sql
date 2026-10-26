@@ -44,7 +44,8 @@ CREATE OR REFRESH STREAMING TABLE workers (
     )
   ) ON VIOLATION DROP ROW,
   CONSTRAINT hire_date_not_null EXPECT (hire_date IS NOT NULL) ON VIOLATION FAIL UPDATE
-);
+)
+COMMENT 'Typed and conformed worker master at one current row per employee.';
 
 CREATE FLOW workers_cdc AS AUTO CDC INTO workers
 FROM STREAM(worker_changes)
@@ -79,7 +80,8 @@ CREATE OR REFRESH STREAMING TABLE worker_history (
   CONSTRAINT event_date_on_or_after_hire_date EXPECT (
     event_date >= hire_date
   )
-);
+)
+COMMENT 'Effective-dated employee job, organization, manager, and exit history maintained as SCD Type 2.';
 
 CREATE FLOW worker_history_cdc AS AUTO CDC INTO worker_history
 FROM STREAM(worker_history_changes)
@@ -113,7 +115,8 @@ SELECT
   _ingested_at
 FROM STREAM(`${catalog}`.`${bronze_schema}`.`org_units`);
 
-CREATE OR REFRESH STREAMING TABLE org_units;
+CREATE OR REFRESH STREAMING TABLE org_units
+COMMENT 'Typed and conformed organization hierarchy at one row per organization unit.';
 
 CREATE FLOW org_units_cdc AS AUTO CDC INTO org_units
 FROM STREAM(org_unit_changes)
@@ -122,6 +125,7 @@ SEQUENCE BY STRUCT(_ingested_at, _source_file)
 STORED AS SCD TYPE 1;
 
 CREATE OR REFRESH PRIVATE MATERIALIZED VIEW job_description_ai_signals
+COMMENT 'Pipeline-private AI classifications and extracted skills at one row per distinct normalized job description.'
 AS
 SELECT
   job_ai_source.job_description,
@@ -160,6 +164,7 @@ FROM (
 CREATE OR REFRESH STREAMING TABLE jobs_enriched (
   CONSTRAINT job_code_not_null EXPECT (job_code IS NOT NULL)
 )
+COMMENT 'Typed job catalog enriched with AI-classified GenAI exposure and AI-extracted required skills.'
 AS
 SELECT
   upper(trim(job.job_code)) AS job_code,

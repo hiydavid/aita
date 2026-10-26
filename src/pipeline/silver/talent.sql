@@ -25,7 +25,8 @@ CREATE OR REFRESH STREAMING TABLE compensation (
   CONSTRAINT base_salary_within_band EXPECT (
     base_salary BETWEEN band_min AND band_max
   )
-);
+)
+COMMENT 'Typed annual employee compensation and pay-band records at compensation-record grain.';
 
 CREATE FLOW compensation_cdc AS AUTO CDC INTO compensation
 FROM STREAM(compensation_changes)
@@ -34,6 +35,7 @@ SEQUENCE BY STRUCT(_ingested_at, _source_file)
 STORED AS SCD TYPE 1;
 
 CREATE OR REFRESH PRIVATE MATERIALIZED VIEW performance_comment_ai_signals
+COMMENT 'Pipeline-private AI-extracted demonstrated skills at one row per distinct normalized manager comment.'
 AS
 SELECT
   performance_ai_source.manager_comment,
@@ -69,6 +71,7 @@ CREATE OR REFRESH STREAMING TABLE performance_enriched (
     )
   ) ON VIOLATION DROP ROW
 )
+COMMENT 'Typed annual employee performance reviews enriched with AI-extracted demonstrated skills.'
 AS
 SELECT
   upper(trim(performance.review_id)) AS review_id,

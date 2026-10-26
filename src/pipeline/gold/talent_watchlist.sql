@@ -1,8 +1,15 @@
 USE CATALOG `${catalog}`;
 
-CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`talent_watchlist`
+CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`talent_watchlist` (
+  employee_id STRING COMMENT 'Current employee identifier joining to dim_worker; one row per flagged employee.',
+  business_line STRING COMMENT 'Current employee business line.',
+  risk_flags ARRAY<STRING> COMMENT 'Triggered rule identifiers. Values: stalled_high_performer, disengaging, team_at_risk, hard_to_backfill_risk.',
+  reasons ARRAY<STRING> COMMENT 'Business-readable explanation for each risk flag in matching array order.',
+  signal_count INT COMMENT 'Number of triggered risk flags; equals the size of risk_flags and reasons.',
+  as_of_date DATE COMMENT 'Maximum business date across the Gold inputs used to evaluate the rules.'
+)
 CLUSTER BY (business_line, employee_id)
-COMMENT 'Current employees with one or more rule-based talent risks, readable reasons, and an as-of date.'
+COMMENT 'One row per current employee with at least one rule-based talent risk, readable reasons, and an as-of date. Used by the talent watchlist experience.'
 AS
 WITH activity_dates AS (
   SELECT max(month_end) AS activity_date

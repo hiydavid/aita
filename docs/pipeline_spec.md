@@ -130,10 +130,14 @@ Governance that belongs to the gold tables themselves is defined in the pipeline
 
 **Compensation column mask**
 - **Masked columns:** `base_salary`, `bonus` and `pay_position_to_midpoint` on `aita_gold.fact_compensation`.
+- **Resolved names:** silver `annual_bonus` is published as gold `bonus`; the former `compa_ratio` name is replaced by `pay_position_to_midpoint`.
 - **Mask function:** `aita_gold.mask_compensation(value)` returns the value for members of the `aita_hr_admin` group and NULL for everyone else.
 - **Defined in the pipeline:** the mask is attached in the `CREATE OR REFRESH MATERIALIZED VIEW` statement for `fact_compensation`. Row filters and column masks on pipeline tables should be added, updated or dropped through the `CREATE OR REFRESH` statement rather than with `ALTER TABLE`.
 - **Created before the first run:** the mask function and the `aita_hr_admin` group are created once, in setup or the `aita_setup` job, before the pipeline runs.
 - **Band fields stay unmasked:** `band_min`, `band_mid` and `band_max` are policy data, not personal data, so leaders can still ask "how many people sit below midpoint" in aggregate.
+
+**Resolved attrition rule**
+- `regrettable_flag` is true when the exiting employee had `rating_numeric` 4 or 5 in their latest performance review; it is false when the latest rating was lower or absent.
 
 **No row filters.** All users see all business lines in v1. Row-level coverage by business line, using ABAC, is the production roadmap.
 

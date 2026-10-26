@@ -53,6 +53,12 @@ CREATE VOLUME IF NOT EXISTS genie_workbench_dev_catalog.aita_bronze.landing;
 
 Required privileges: USE CATALOG and CREATE SCHEMA on the catalog, and CREATE VOLUME on aita_bronze.
 
+## Gold governance setup
+
+- Create the workspace group `aita_hr_admin` and assign only approved HR compensation administrators.
+- Run `src/setup/gold_governance.sql` before refreshing the pipeline so `aita_gold.mask_compensation` exists before governed Gold tables compile.
+- Verify the same compensation query as both a group member and a non-member before publishing metric views, exposing data through Genie, or activating Lakebase sync.
+
 ## Rules for Genie Code
 * Work one layer at a time, following docs/pipeline_spec.md.
 * Use the exact table and column names from the spec.

@@ -2,6 +2,7 @@ USE CATALOG `${catalog}`;
 USE SCHEMA `${bronze_schema}`;
 
 CREATE OR REFRESH STREAMING TABLE workers
+COMMENT 'Faithful streaming copy of landed worker master records with file and ingestion provenance.'
 AS
 SELECT
   *,
@@ -17,6 +18,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE job_history
+COMMENT 'Faithful streaming copy of landed employee job, organization, manager, and exit events with ingestion provenance.'
 AS
 SELECT
   *,
@@ -32,6 +34,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE org_units
+COMMENT 'Faithful streaming copy of landed organization hierarchy records with ingestion provenance.'
 AS
 SELECT
   *,
@@ -47,6 +50,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE jobs
+COMMENT 'Faithful streaming copy of landed job catalog records and source descriptions with ingestion provenance.'
 AS
 SELECT
   *,
@@ -61,6 +65,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE engagement_surveys
+COMMENT 'Faithful streaming copy of landed employee engagement responses and comments with ingestion provenance.'
 AS
 SELECT
   *,
@@ -75,6 +80,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE exit_interviews
+COMMENT 'Faithful streaming copy of landed exit interviews and comments with ingestion provenance.'
 AS
 SELECT
   *,
@@ -89,6 +95,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE team_productivity
+COMMENT 'Faithful streaming copy of landed monthly team productivity measures with ingestion provenance.'
 AS
 SELECT
   *,
@@ -104,6 +111,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE performance_reviews
+COMMENT 'Faithful streaming copy of landed annual performance reviews and manager comments with ingestion provenance.'
 AS
 SELECT
   *,
@@ -118,6 +126,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE compensation
+COMMENT 'Faithful streaming copy of landed annual employee compensation and pay-band records with ingestion provenance.'
 AS
 SELECT
   *,
@@ -133,6 +142,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE requisitions
+COMMENT 'Faithful streaming copy of landed recruiting requisitions with ingestion provenance.'
 AS
 SELECT
   *,
@@ -148,6 +158,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE applications
+COMMENT 'Faithful streaming copy of landed candidate applications, summaries, and offer comments with ingestion provenance.'
 AS
 SELECT
   *,
@@ -162,6 +173,7 @@ FROM STREAM read_files(
 );
 
 CREATE OR REFRESH STREAMING TABLE application_events
+COMMENT 'Faithful streaming copy of landed application stage-change events with ingestion provenance.'
 AS
 SELECT
   *,

@@ -31,7 +31,8 @@ CREATE OR REFRESH STREAMING TABLE requisitions (
   CONSTRAINT close_date_on_or_after_open_date EXPECT (
     close_date IS NULL OR close_date >= open_date
   )
-);
+)
+COMMENT 'Typed recruiting requisitions at one row per requisition.';
 
 CREATE FLOW requisitions_cdc AS AUTO CDC INTO requisitions
 FROM STREAM(requisition_changes)
@@ -40,6 +41,7 @@ SEQUENCE BY STRUCT(_ingested_at, _source_file)
 STORED AS SCD TYPE 1;
 
 CREATE OR REFRESH PRIVATE MATERIALIZED VIEW candidate_summary_ai_signals
+COMMENT 'Pipeline-private AI-extracted candidate skills at one row per distinct normalized candidate summary.'
 AS
 SELECT
   candidate_ai_source.candidate_summary,
@@ -66,6 +68,7 @@ FROM (
 ) AS candidate_ai_source;
 
 CREATE OR REFRESH PRIVATE MATERIALIZED VIEW offer_decline_ai_signals
+COMMENT 'Pipeline-private AI-classified decline reasons at one row per distinct normalized offer-decline comment.'
 AS
 SELECT
   decline_ai_source.offer_decline_comment,
@@ -94,6 +97,7 @@ FROM (
 CREATE OR REFRESH STREAMING TABLE applications_enriched (
   CONSTRAINT requisition_exists EXPECT (requisition_exists)
 )
+COMMENT 'Typed candidate applications enriched with AI-extracted skills and AI-classified offer-decline reasons.'
 AS
 SELECT
   upper(trim(application.application_id)) AS application_id,
@@ -136,7 +140,8 @@ SELECT
   _ingested_at
 FROM STREAM(`${catalog}`.`${bronze_schema}`.`application_events`);
 
-CREATE OR REFRESH STREAMING TABLE application_events;
+CREATE OR REFRESH STREAMING TABLE application_events
+COMMENT 'Typed application stage-change history at one row per application event.';
 
 CREATE FLOW application_events_cdc AS AUTO CDC INTO application_events
 FROM STREAM(application_event_changes)

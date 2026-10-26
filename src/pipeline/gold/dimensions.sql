@@ -16,6 +16,7 @@ CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`dim_worker` (
   worker_type STRING COMMENT 'Employment arrangement. Values: Full Time, Part Time.',
   latest_event_type STRING COMMENT 'Most recent worker-history event. Values: HIRE, TRANSFER, PROMOTION, MANAGER_CHANGE, EXIT.',
   latest_event_date DATE COMMENT 'Effective date of the most recent worker-history event.',
+  last_promotion_date DATE COMMENT 'Most recent promotion effective date across worker history; null when the employee has never been promoted.',
   termination_type STRING COMMENT 'Departure classification for terminated employees. Values: Voluntary, Involuntary; null for active employees.'
 )
 COMMENT 'One row per employee with the current job, organization, manager, and employment state. Used as the workforce dimension across Gold facts.'
@@ -28,6 +29,14 @@ WITH current_worker_history AS (
     termination_type
   FROM `${catalog}`.`${silver_schema}`.`worker_history`
   WHERE __END_AT IS NULL
+),
+promotion_history AS (
+  SELECT
+    worker_id,
+    max(event_date) AS last_promotion_date
+  FROM `${catalog}`.`${silver_schema}`.`worker_history`
+  WHERE event_type = 'PROMOTION'
+  GROUP BY worker_id
 )
 SELECT
   worker.worker_id AS employee_id,
@@ -45,10 +54,13 @@ SELECT
   worker.worker_type,
   history.event_type AS latest_event_type,
   history.event_date AS latest_event_date,
+  promotion.last_promotion_date,
   history.termination_type
 FROM `${catalog}`.`${silver_schema}`.`workers` AS worker
 LEFT JOIN current_worker_history AS history
-  ON worker.worker_id = history.worker_id;
+  ON worker.worker_id = history.worker_id
+LEFT JOIN promotion_history AS promotion
+  ON worker.worker_id = promotion.worker_id;
 
 CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`dim_org` (
   org_unit_id STRING COMMENT 'Stable organization-unit identifier.',

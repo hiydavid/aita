@@ -25,6 +25,7 @@ Context file for Genie Code CLI. Read this together with `docs/pipeline_spec.md`
 | `silver_schema` | `aita_silver` |
 | `gold_schema` | `aita_gold` |
 | `landing_path` | `/Volumes/genie_workbench_dev_catalog/aita_bronze/landing` |
+| `warehouse_id` | `813b0ad2f3036e46` (`genie-workbench-test`, serverless) |
 
 These are passed to the SDP pipeline as configuration parameters. Pipeline SQL must reference the parameters, never hardcoded catalog or schema names.
 
@@ -58,6 +59,12 @@ Required privileges: USE CATALOG and CREATE SCHEMA on the catalog, and CREATE VO
 - Create the workspace group `aita_hr_admin` and assign only approved HR compensation administrators.
 - Run `src/setup/gold_governance.sql` before refreshing the pipeline so `aita_gold.mask_compensation` exists before governed Gold tables compile.
 - Verify the same compensation query as both a group member and a non-member before publishing metric views, exposing data through Genie, or activating Lakebase sync.
+
+## Semantic access setup
+
+- Use the serverless `genie-workbench-test` SQL warehouse through the `warehouse_id` bundle variable.
+- Create the workspace group `aita_users` and add only approved demo users and the Aita app service principal.
+- Preserve `aita_hr_admin` membership separately; semantic grants apply to both groups, while only `aita_hr_admin` receives unmasked compensation.
 
 ## Rules for Genie Code
 * Work one layer at a time, following docs/pipeline_spec.md.

@@ -38,6 +38,7 @@ current_employees AS (
   SELECT
     worker.employee_id,
     worker.hire_date,
+    worker.last_promotion_date,
     worker.job_code,
     worker.org_unit_id,
     org.business_line,
@@ -73,14 +74,6 @@ latest_compensation AS (
     ORDER BY effective_date DESC, compensation_id DESC
   ) = 1
 ),
-promotion_history AS (
-  SELECT
-    worker_id AS employee_id,
-    max(event_date) AS last_promotion_date
-  FROM `${catalog}`.`${silver_schema}`.`worker_history`
-  WHERE event_type = 'PROMOTION'
-  GROUP BY worker_id
-),
 stalled_high_performers AS (
   SELECT employee.employee_id
   FROM current_employees AS employee
@@ -88,14 +81,12 @@ stalled_high_performers AS (
     ON employee.employee_id = performance.employee_id
   INNER JOIN latest_compensation AS compensation
     ON employee.employee_id = compensation.employee_id
-  LEFT JOIN promotion_history AS promotion
-    ON employee.employee_id = promotion.employee_id
   WHERE performance.top_rating_flag
     AND compensation.below_band_midpoint_flag
     AND datediff(employee.as_of_date, employee.hire_date) >= 1095
     AND (
-      promotion.last_promotion_date IS NULL
-      OR promotion.last_promotion_date < add_months(employee.as_of_date, -36)
+      employee.last_promotion_date IS NULL
+      OR employee.last_promotion_date < add_months(employee.as_of_date, -36)
     )
 ),
 engagement_ranked AS (

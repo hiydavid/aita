@@ -1,6 +1,6 @@
 # Aita Build Progress
 
-Last updated: October 25, 2026
+Last updated: October 26, 2026
 
 ## Completed
 
@@ -148,15 +148,18 @@ Detailed watchlist execution evidence is stored in `evidence/gold_talent_watchli
 
 Detailed governance evidence is stored in `evidence/gold_comments.md` and `evidence/mask_check.md`.
 
-## Next Steps
-
 ### Phase 6: Semantic Prerequisites
 
-1. Add `warehouse_id` as a bundle variable after resolving the approved serverless SQL warehouse.
-2. Create `aita_users`, confirm its approved users and app service principal, and preserve the existing `aita_hr_admin` membership.
-3. Extend `dim_worker` with governed `last_promotion_date` metadata needed by current-state talent measures.
-4. Build `semantic_workforce_monthly`, `semantic_talent_snapshot`, and `semantic_talent_skills` with explicit grain, latest-record, fan-out, and mask-propagation checks.
-5. Record helper-view validation in `evidence/semantic_grain_checks.md`.
+- Resolved the approved serverless SQL warehouse as `genie-workbench-test` (`813b0ad2f3036e46`) and added it as the `warehouse_id` bundle variable.
+- Created the `aita_users` workspace group (`2124487482070223`) with the approved project owner as its sole initial member and preserved the separate `aita_hr_admin` membership. No Aita app service principal exists yet.
+- Added governed `last_promotion_date` metadata to `dim_worker` and reused it in the talent watchlist instead of re-reading Silver promotion history.
+- Published `semantic_workforce_monthly`, `semantic_talent_snapshot`, and `semantic_talent_skills` as pipeline-managed materialized views with explicit grains and an attached compensation mask on pay position.
+- Completed pipeline update `daa262c6-d33b-409c-9af0-5cd6a137059d`; all 13 grain, latest-record, fan-out, transformation, watchlist, and source-parity checks passed with zero violations.
+- Preserved the 3,427-row talent watchlist and published 17,436 workforce-month rows, 18,839 active talent rows, and 58,656 employee-skill rows.
+
+Detailed semantic helper evidence is stored in `evidence/semantic_grain_checks.md`.
+
+## Next Steps
 
 ### Phase 7: Metric Views and Grants
 

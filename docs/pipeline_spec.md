@@ -117,6 +117,30 @@ Columns: employee_id, business_line, risk_flags, reasons, signal_count, as_of_da
 
 Confirm the current AI Function signatures and the AUTO CDC syntax before finalizing the SQL.
 
+### Gold governance
+
+Governance that belongs to the gold tables themselves is defined in the pipeline SQL, so it ships and versions with the tables. Grants, the mask verification and the lineage walkthrough live in the Semantic Layer & Genie Agents doc.
+
+**Table and column comments**
+- Every gold table and every gold column gets a business-friendly comment in its `CREATE OR REFRESH` statement. Good comments help Genie pick the right columns and describe the table to anyone browsing the catalog.
+- Each table comment states the grain, what one row represents, and its main use (for example, "One row per voluntary or involuntary exit. Includes the AI-classified exit reason and a regrettable flag. Used for attrition analysis.").
+- Each column comment gives the meaning, units and allowed values. For AI-derived columns, it also names the source text field and the label set (for example, "`exit_reason`: AI-classified from exit_comment using ai_classify. Values: compensation, manager, schedule and workload, career growth, relocation, other.").
+- Flags and derived measures state their rule (for example, "`regrettable_flag`: true when the exiting employee had a top-two rating in their last review.").
+- Silver and bronze tables get a short table comment only.
+
+**Compensation column mask**
+- **Masked columns:** `base_salary`, `bonus` and `pay_position_to_midpoint` on `aita_gold.fact_compensation`.
+- **Mask function:** `aita_gold.mask_compensation(value)` returns the value for members of the `aita_hr_admin` group and NULL for everyone else.
+- **Defined in the pipeline:** the mask is attached in the `CREATE OR REFRESH MATERIALIZED VIEW` statement for `fact_compensation`. Row filters and column masks on pipeline tables should be added, updated or dropped through the `CREATE OR REFRESH` statement rather than with `ALTER TABLE`.
+- **Created before the first run:** the mask function and the `aita_hr_admin` group are created once, in setup or the `aita_setup` job, before the pipeline runs.
+- **Band fields stay unmasked:** `band_min`, `band_mid` and `band_max` are policy data, not personal data, so leaders can still ask "how many people sit below midpoint" in aggregate.
+
+**No row filters.** All users see all business lines in v1. Row-level coverage by business line, using ABAC, is the production roadmap.
+
+**Evidence**
+- `evidence/gold_comments.md`: output of `DESCRIBE TABLE EXTENDED` for two or three gold tables, showing the comments.
+- `evidence/mask_check.md`: the same `SELECT` on `fact_compensation` run as an HR admin and as a non-HR user, with salaries visible for the first and NULL for the second.
+
 ### Building it with Genie Code CLI
 
 **Setup (once)**

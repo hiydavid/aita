@@ -116,18 +116,38 @@ Detailed Phase 3 execution evidence is stored in `evidence/silver_ai_summary.md`
 
 Detailed gold dimension execution evidence is stored in `evidence/gold_dimensions_summary.md`.
 
+### Phase 4: Gold Facts
+
+- Implemented all eight specified gold facts for monthly headcount, attrition, engagement, productivity, performance, masked compensation, requisitions, and application funnels.
+- Added half-open SCD Type 2 temporal joins, source-driven headcount months, readable business flags, stage-duration measures, and pay-position outputs with no raw compensation amounts.
+- Deployed the serverless pipeline and completed job run `24365280429776` with pipeline update `9f70c7ed-566a-4fc9-8793-de4d05e54ec5`.
+- Reconciled 286,588 gold fact rows with zero duplicate or null grains, source-count differences, join fan-out, orphan dimension keys, temporal misses, negative funnel durations, or exposed raw pay columns.
+
+Detailed gold fact execution evidence is stored in `evidence/gold_facts_summary.md`.
+
 ## Next Steps
 
-### Phase 4: Gold Facts and Serving
+### Phase 4: Gold Serving
 
-1. Implement the gold facts and `talent_watchlist` materialized view.
-2. Validate fact grain, temporal worker joins, join fan-out, row counts, and watchlist rules.
-3. Define the gold metric views once their specifications are available.
-4. Sync `talent_watchlist` to Lakebase after successful pipeline updates.
+1. Implement the `talent_watchlist` materialized view.
+2. Validate watchlist grain, signal combinations, reason text, and planted-pattern coverage.
+3. Finalize the gold metric-view specifications, but defer publication until Gold Governance is complete.
+4. Define the Lakebase sync mapping for `talent_watchlist`, but defer activation until Gold Governance is complete.
 
-### Phase 5: Orchestration and Evidence
+### Phase 5: Gold Governance
 
-1. Extend `aita_pipeline` with the `generate_data`, `sync_lakebase`, and `evidence_report` tasks described in the environment specification.
-2. Complete the remaining silver and gold run evidence, expectation results, AI samples, and grain checks.
-3. Verify the final pipeline graph, Catalog Explorer lineage, and representative raw, bronze, silver, and gold data previews.
-4. Commit each remaining completed layer under the project owner's account with a clear message.
+1. Reconcile the implemented gold contract with the new governance specification before changing SQL: replace the current omission-based compensation privacy model with governed masked columns, resolve `bonus` versus `annual_bonus` and `pay_position_to_midpoint` versus `compa_ratio`, and confirm the final `regrettable_flag` rule.
+2. Provision or verify the `aita_hr_admin` group and `${catalog}.${gold_schema}.mask_compensation` function in one-time setup or an `aita_setup` task that completes before the SDP pipeline refreshes governed tables.
+3. Add business-friendly comments to every gold table and column, including grains, units, allowed values, AI source fields and label sets, and explicit flag and derived-measure rules; add short table comments to bronze and silver tables.
+4. Attach masks for `base_salary`, `bonus`, and `pay_position_to_midpoint` directly in the `fact_compensation` `CREATE OR REFRESH MATERIALIZED VIEW`, keep band fields visible, and add no row filters in v1.
+5. Validate comments with `DESCRIBE TABLE EXTENDED`, test compensation visibility as both an HR admin and a non-HR user, and save the results in `evidence/gold_comments.md` and `evidence/mask_check.md`.
+
+Gold Governance must complete before metric-view publication, Genie Agent exposure, or Lakebase sync activation. Business-line ABAC row filtering remains a production-roadmap item.
+
+### Phase 6: Orchestration, Semantic Serving, and Evidence
+
+1. Extend `aita_pipeline` with the governance prerequisite, `generate_data`, `sync_lakebase`, and `evidence_report` tasks described by the environment and governance specifications.
+2. Publish the gold metric views once their specifications are available and activate the governed `talent_watchlist` Lakebase sync.
+3. Complete the remaining silver and gold run evidence, expectation results, AI samples, governance checks, and grain checks.
+4. Verify the final pipeline graph, Catalog Explorer lineage, and representative raw, bronze, silver, and gold data previews.
+5. Commit each remaining completed layer under the project owner's account with a clear message.

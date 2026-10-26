@@ -125,14 +125,18 @@ Detailed gold dimension execution evidence is stored in `evidence/gold_dimension
 
 Detailed gold fact execution evidence is stored in `evidence/gold_facts_summary.md`.
 
+### Phase 4: Gold Talent Watchlist
+
+- Implemented the `talent_watchlist` materialized view at one row per current employee with at least one risk signal.
+- Added stalled-high-performer, disengaging, team-at-risk, and combined hard-to-backfill rules with readable aligned reason text.
+- Used deterministic as-of dates, trailing-12-month team attrition, a data-derived team-risk threshold, and the bank median job-family time to fill.
+- Deployed the serverless pipeline and completed job run `618778647851719` with pipeline update `30cecb4b-3be0-4180-9d69-8c79bc38fe14`.
+- Reconciled 3,427 watchlist rows with zero duplicate employees, null grain values, signal-count mismatches, reason-count mismatches, or hard-to-backfill rule mismatches.
+- Captured all 504 active planted stalled employees, all 522 active employees in the fraud-operations burnout pocket, and both planted contact-center risk teams with no unexpected risk teams.
+
+Detailed watchlist execution evidence is stored in `evidence/gold_talent_watchlist_summary.md`.
+
 ## Next Steps
-
-### Phase 4: Gold Serving
-
-1. Implement the `talent_watchlist` materialized view.
-2. Validate watchlist grain, signal combinations, reason text, and planted-pattern coverage.
-3. Finalize the gold metric-view specifications, but defer publication until Gold Governance is complete.
-4. Define the Lakebase sync mapping for `talent_watchlist`, but defer activation until Gold Governance is complete.
 
 ### Phase 5: Gold Governance
 
@@ -147,7 +151,7 @@ Gold Governance must complete before metric-view publication, Genie Agent exposu
 ### Phase 6: Orchestration, Semantic Serving, and Evidence
 
 1. Extend `aita_pipeline` with the governance prerequisite, `generate_data`, `sync_lakebase`, and `evidence_report` tasks described by the environment and governance specifications.
-2. Publish the gold metric views once their specifications are available and activate the governed `talent_watchlist` Lakebase sync.
+2. Finalize and publish the gold metric views, define the `talent_watchlist` Lakebase mapping, and activate the governed sync.
 3. Complete the remaining silver and gold run evidence, expectation results, AI samples, governance checks, and grain checks.
 4. Verify the final pipeline graph, Catalog Explorer lineage, and representative raw, bronze, silver, and gold data previews.
 5. Commit each remaining completed layer under the project owner's account with a clear message.

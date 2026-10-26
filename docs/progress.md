@@ -150,10 +150,39 @@ Detailed governance evidence is stored in `evidence/gold_comments.md` and `evide
 
 ## Next Steps
 
-### Phase 6: Orchestration, Semantic Serving, and Evidence
+### Phase 6: Semantic Prerequisites
 
-1. Extend `aita_pipeline` with the governance prerequisite, `generate_data`, `sync_lakebase`, and `evidence_report` tasks described by the environment and governance specifications.
-2. Finalize and publish the gold metric views, define the `talent_watchlist` Lakebase mapping, and activate the governed sync.
-3. Complete the remaining silver and gold run evidence, expectation results, AI samples, governance checks, and grain checks.
-4. Verify the final pipeline graph, Catalog Explorer lineage, and representative raw, bronze, silver, and gold data previews.
-5. Commit each remaining completed layer under the project owner's account with a clear message.
+1. Add `warehouse_id` as a bundle variable after resolving the approved serverless SQL warehouse.
+2. Create `aita_users`, confirm its approved users and app service principal, and preserve the existing `aita_hr_admin` membership.
+3. Extend `dim_worker` with governed `last_promotion_date` metadata needed by current-state talent measures.
+4. Build `semantic_workforce_monthly`, `semantic_talent_snapshot`, and `semantic_talent_skills` with explicit grain, latest-record, fan-out, and mask-propagation checks.
+5. Record helper-view validation in `evidence/semantic_grain_checks.md`.
+
+### Phase 7: Metric Views and Grants
+
+1. Publish the eight grain-safe metric views defined in `docs/semantics_spec.md`: workforce, attrition, engagement, productivity, talent, talent skills, requisitions, and recruiting funnel.
+2. Apply semantic-layer Unity Catalog grants from `src/semantic/grants.sql` and SQL warehouse permissions through workspace tooling.
+3. Reconcile every metric to direct Gold SQL, including multi-month rates, zero denominators, semi-additive headcount, stage conversions, and masked pay behavior.
+4. Record the results in `evidence/metric_view_checks.md` and preserve the completed Gold governance evidence without repeating Phase 5.
+
+### Phase 8: Orchestration and Lakebase Sync
+
+1. Extend `aita_pipeline` to run `generate_data` and `gold_governance` prerequisites before `sdp_pipeline`.
+2. Add `publish_semantics` after the SDP pipeline, and run `sync_lakebase` after the governed Gold watchlist is refreshed.
+3. Define the Lakebase destination, primary key, update behavior, and approved columns for `talent_watchlist`, then activate the governed sync.
+4. Run `evidence_report` only after semantic publication, Lakebase sync, and Agent evaluation have completed.
+
+### Phase 9: Genie Agents
+
+1. Commit parsed version-2 Agent configurations for Workforce & Attrition, Talent & Performance, and Recruiting under `src/genie/`.
+2. Validate all example and benchmark SQL before live Agent creation or update.
+3. Publish one Agent at a time after explicit approval, starting with Workforce & Attrition.
+4. Reach at least 90% on 10 canonical benchmarks per Agent and capture representative generated-SQL transcripts.
+5. Expand each benchmark set to at least 30 valid items before productionizing the routing agent.
+
+### Phase 10: Final Evidence and Handoff
+
+1. Complete remaining expectation results, AI samples, semantic grain checks, metric parity checks, Agent benchmarks, and Lakebase sync evidence.
+2. Verify the final job and pipeline graphs, Catalog Explorer lineage, and representative raw, Bronze, Silver, Gold, semantic, and Lakebase previews.
+3. Reconcile documentation with deployed resource IDs and the final orchestration DAG.
+4. Commit each completed batch under the project owner's account with a clear message.

@@ -107,12 +107,21 @@ Detailed Phase 2 execution evidence is stored in `evidence/silver_core_summary.m
 
 Detailed Phase 3 execution evidence is stored in `evidence/silver_ai_summary.md`.
 
+### Phase 4: Gold Dimensions
+
+- Implemented the `dim_worker`, `dim_org`, `dim_job`, and `dim_date` materialized views in the gold schema.
+- Preserved one current row per employee, resolved organization manager names, retained auditable AI job-exposure comparisons, and generated a continuous full-year calendar through 2027.
+- Deployed the serverless pipeline and completed job run `961565381599131` with pipeline update `ed904241-36ae-4fd2-ab91-15eaa1882df3`.
+- Reconciled 27,071 gold dimension rows with zero duplicate keys, null keys, source-count differences, orphan dimension joins, or date gaps.
+
+Detailed gold dimension execution evidence is stored in `evidence/gold_dimensions_summary.md`.
+
 ## Next Steps
 
-### Phase 4: Gold and Serving
+### Phase 4: Gold Facts and Serving
 
-1. Implement the gold dimensions, facts, and `talent_watchlist` materialized view.
-2. Validate gold table grain, join fan-out, row counts, and watchlist rules.
+1. Implement the gold facts and `talent_watchlist` materialized view.
+2. Validate fact grain, temporal worker joins, join fan-out, row counts, and watchlist rules.
 3. Define the gold metric views once their specifications are available.
 4. Sync `talent_watchlist` to Lakebase after successful pipeline updates.
 

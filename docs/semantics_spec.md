@@ -12,6 +12,8 @@ Environment values and commands are defined in `docs/environment.md`. The semant
 
 ### Access and grants
 
+The table below is the target shared-access contract for production use and any demo involving identities other than the project owner.
+
 | Principal | Grants | Notes |
 |---|---|---|
 | `aita_users` | `USE CATALOG`; `USE SCHEMA` on `aita_gold`; `SELECT` on approved Gold tables, semantic helper views, and metric views; `CAN USE` on the SQL warehouse; `CAN RUN` on the three Genie Agents | Includes approved demo users and the app service principal; no access to `aita_bronze` or `aita_silver` |
@@ -23,6 +25,13 @@ Environment values and commands are defined in `docs/environment.md`. The semant
 - SQL warehouse and Genie Agent permissions are workspace-object permissions and are applied by the semantic deployment tooling.
 - The existing compensation mask remains authoritative: `base_salary`, `bonus`, and `pay_position_to_midpoint` are visible only to `aita_hr_admin`; band fields and `below_band_midpoint_flag` remain available to `aita_users`.
 - No row filters are added in v1.
+
+When account-level identity administration is unavailable, an owner-only constrained demo may proceed with the following exception:
+
+- The project owner uses existing ownership or inherited privileges to query the governed semantic assets; no direct per-user Unity Catalog grants are added as a workaround.
+- Account-level group grants, access for additional demo users, app service-principal access, and shared Genie Agent access are deferred.
+- The demo must not claim shared or production-ready access governance. Existing compensation masks remain in force and are not weakened for the fallback.
+- `src/semantic/grants.sql` remains the authoritative shared-access implementation and must be rerun when account-level groups can be provisioned.
 
 ### Metric-view design rules
 
@@ -223,12 +232,14 @@ The future routing agent answers cross-domain questions by calling multiple doma
 
 1. Build and validate the three grain-safe helper views, including the Gold prerequisite for talent recency.
 2. Create and SQL-test all eight metric views before exposing them to an Agent, including deployed syntax for window measures and semantic formats.
-3. Apply Unity Catalog and workspace-object grants using the approved principals and serverless warehouse.
+3. Apply Unity Catalog and workspace-object grants using the approved principals and serverless warehouse. This gate may be recorded as deferred only for the owner-only constrained demo; it must pass before any other user or app service principal is given access.
 4. Store each Agent as parsed version-2 configuration and deploy one at a time through idempotent tooling; live creation or update requires explicit approval.
 5. Validate every example and benchmark query through read-only execution before adding it to an Agent.
 6. Fix calculation failures in the semantic layer and behavior failures in Agent configuration, then rerun the affected checks.
 
 Initial publication requires at least 90% passing across 10 canonical benchmarks per Agent. Before productionizing the routing agent, expand each set to at least 30 valid items with additional phrasings and edge cases.
+
+Under the owner-only constrained demo exception, Agent configuration and benchmark validation may run as the project owner, but multi-user Agent access and app integration remain out of scope until publication gate 3 passes.
 
 ### Validation contract
 

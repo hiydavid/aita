@@ -1,6 +1,8 @@
-USE CATALOG `${catalog}`;
+USE CATALOG IDENTIFIER(:catalog);
 
-CREATE OR REPLACE FUNCTION `${catalog}`.`${gold_schema}`.`mask_compensation`(
+CREATE OR REPLACE FUNCTION IDENTIFIER(
+  concat(:catalog, '.', :gold_schema, '.mask_compensation')
+)(
   value DECIMAL(18, 4)
 )
 RETURNS DECIMAL(18, 4)

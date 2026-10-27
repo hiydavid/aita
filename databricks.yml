@@ -17,6 +17,16 @@ variables:
     default: /Volumes/genie_workbench_dev_catalog/aita_bronze/landing
   warehouse_id:
     default: 813b0ad2f3036e46
+  lakebase_project:
+    default: aita-lakebase
+  lakebase_branch:
+    default: projects/aita-lakebase/branches/production
+  lakebase_database:
+    default: databricks_postgres
+  lakebase_synced_table:
+    default: genie_workbench_dev_catalog.aita_gold.talent_watchlist_serving
+  lakebase_sync_pipeline_id:
+    default: 460f8caf-0187-4590-8ae3-38c306cff78c
 
 targets:
   dev:

@@ -1,0 +1,15 @@
+resources:
+  jobs:
+    apply_semantic_grants:
+      name: aita_apply_semantic_grants
+      tags:
+        aidevkit_project: ai-dev-kit
+      tasks:
+        - task_key: apply_grants
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../src/semantic/grants.sql
+            parameters:
+              catalog: ${var.catalog}
+              gold_schema: ${var.gold_schema}

@@ -105,6 +105,7 @@ Governance intrinsic to Gold tables is versioned in pipeline SQL. Access grants 
 - `aita_gold.mask_compensation(value)` returns values only to `aita_hr_admin`; create the group and function before the first pipeline run.
 - Attach and maintain the mask through `CREATE OR REFRESH MATERIALIZED VIEW`, not `ALTER TABLE`.
 - Keep `band_min`, `band_mid`, and `band_max` unmasked so aggregate band-position questions remain available.
+- For an owner-only constrained demo, a workspace-local `aita_hr_admin` group may support mask validation, but it is not a Unity Catalog grant principal and does not satisfy the shared semantic-access contract in `docs/semantics_spec.md`.
 
 **Attrition:** `regrettable_flag` is true when the exiting employee's latest `rating_numeric` is 4 or 5; otherwise it is false.
 

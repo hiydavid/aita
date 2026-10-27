@@ -22,8 +22,51 @@ resources:
       performance_target: STANDARD
       tags:
         aidevkit_project: ai-dev-kit
+      environments:
+        - environment_key: generator
+          spec:
+            environment_version: "4"
+            dependencies:
+              - Faker==37.12.0
       tasks:
+        - task_key: generate_data
+          environment_key: generator
+          spark_python_task:
+            python_file: ../src/generate/generate_data.py
+            parameters:
+              - --catalog
+              - ${var.catalog}
+              - --bronze-schema
+              - ${var.bronze_schema}
+              - --landing-path
+              - ${var.landing_path}
+
+        - task_key: gold_governance
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            file:
+              path: ../src/setup/gold_governance.sql
+            parameters:
+              catalog: ${var.catalog}
+              gold_schema: ${var.gold_schema}
+
         - task_key: sdp_pipeline
+          depends_on:
+            - task_key: generate_data
+            - task_key: gold_governance
           pipeline_task:
             pipeline_id: ${resources.pipelines.aita_sdp.id}
+            full_refresh: true
+
+        - task_key: publish_semantics
+          depends_on:
+            - task_key: sdp_pipeline
+          run_job_task:
+            job_id: ${resources.jobs.publish_semantics.id}
+
+        - task_key: sync_lakebase
+          depends_on:
+            - task_key: sdp_pipeline
+          pipeline_task:
+            pipeline_id: ${var.lakebase_sync_pipeline_id}
             full_refresh: false

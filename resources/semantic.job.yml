@@ -90,14 +90,3 @@ resources:
             parameters:
               catalog: ${var.catalog}
               gold_schema: ${var.gold_schema}
-
-        - task_key: apply_grants
-          depends_on:
-            - task_key: publish_recruiting_funnel
-          sql_task:
-            warehouse_id: ${var.warehouse_id}
-            file:
-              path: ../src/semantic/grants.sql
-            parameters:
-              catalog: ${var.catalog}
-              gold_schema: ${var.gold_schema}

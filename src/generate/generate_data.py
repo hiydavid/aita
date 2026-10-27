@@ -8,7 +8,6 @@ from datetime import date
 from pathlib import PurePosixPath
 
 import pandas as pd
-from databricks.connect import DatabricksEnv, DatabricksSession
 from pyspark.sql import Column, DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import StringType, StructField, StructType
@@ -164,6 +163,12 @@ def fake_person(worker_indexes: pd.Series) -> pd.DataFrame:
 
 
 def create_session(profile: str) -> SparkSession:
+    active_session = SparkSession.getActiveSession()
+    if active_session is not None:
+        return active_session
+
+    from databricks.connect import DatabricksEnv, DatabricksSession
+
     environment = DatabricksEnv().withDependencies("faker==37.12.0")
     return (
         DatabricksSession.builder.profile(profile)

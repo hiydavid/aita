@@ -1,6 +1,6 @@
 # Aita Build Progress
 
-Last updated: October 26, 2026
+Last updated: October 27, 2026
 
 ## Completed
 
@@ -159,43 +159,45 @@ Detailed governance evidence is stored in `evidence/gold_comments.md` and `evide
 
 Detailed semantic helper evidence is stored in `evidence/semantic_grain_checks.md`.
 
-### Phase 7: Metric Views
+### Phase 7: Metric Views — Owner-Only Demo Complete
 
 - Published all eight specified Unity Catalog metric views through the bundle-managed `publish_semantics` SQL job on the serverless warehouse.
 - Added a historical `internal_applicant_job_code` to `fact_application_funnel` and renamed its raw `source` field to `recruiting_source` to avoid the reserved metric-view source alias while retaining a business-facing recruiting-source dimension.
 - Completed pipeline update `50b9c66a-d2d6-458a-8664-4f5c731317b7` and semantic run `1017977579100747`; all eight publication tasks succeeded.
 - Passed all 12 direct-Gold parity checks with zero violations, including yearly semi-additive headcount, previous-wave engagement, zero denominators, funnel conversions, temporal internal-job matching, and governed pay.
 - Applied explicit SQL warehouse `CAN USE` permissions to `aita_users` and `aita_hr_admin`.
-- Unity Catalog grants remain pending because both existing groups are legacy `WorkspaceGroup` principals, which Unity Catalog cannot resolve. Replace them with account-level groups assigned to the workspace, then rerun `publish_semantics`.
+- Deferred shared Unity Catalog access because both existing groups are legacy `WorkspaceGroup` principals and no account administrator is available to provision account-level replacements. The constrained demo will run only as the project owner using existing privileges; no direct per-user grant workaround or mask bypass will be added.
+- Multi-user access, app service-principal access, shared Genie Agent access, and a fully successful `apply_grants` task are explicitly outside the constrained demo scope.
 
 Detailed Phase 7 evidence is stored in `evidence/metric_view_checks.md`.
 
-## Next Steps
-
-### Phase 7: Complete Unity Catalog Grants
-
-1. Replace the legacy workspace-local `aita_users` and `aita_hr_admin` groups with account-level groups assigned to this workspace while preserving approved membership.
-2. Rerun `publish_semantics`; confirm `apply_grants` succeeds and verify effective Unity Catalog access for both principals.
-3. Preserve the completed metric-view parity and Gold governance evidence without repeating Phase 5.
-
 ### Phase 8: Orchestration and Lakebase Sync
 
-1. Extend `aita_pipeline` to run `generate_data` and `gold_governance` prerequisites before `sdp_pipeline`.
-2. Add `publish_semantics` after the SDP pipeline, and run `sync_lakebase` after the governed Gold watchlist is refreshed.
-3. Define the Lakebase destination, primary key, update behavior, and approved columns for `talent_watchlist`, then activate the governed sync.
-4. Run `evidence_report` only after semantic publication, Lakebase sync, and Agent evaluation have completed.
+- Extended `aita_pipeline` to run serverless `generate_data` and `gold_governance` prerequisites before a full-refresh SDP task, preventing duplicate Bronze ingestion when deterministic landing snapshots are replaced.
+- Added owner-only `publish_semantics` and `sync_lakebase` branches after SDP, and separated deferred account-group grants into the standalone `aita_apply_semantic_grants` job.
+- Created the dedicated Postgres 17 Lakebase project `aita_lakebase` (`projects/aita-lakebase`) and snapshot-synced the six approved `talent_watchlist` columns to `aita_gold.talent_watchlist_serving` with `employee_id` as the primary key.
+- Completed orchestration run `1073150973022044` successfully; all five tasks passed, including SDP update `ca8c43ee-c9ac-4614-b342-a5ee56e78fb6`, semantic run `269141171180276`, and Lakebase update `e4c38851-fe0d-4004-972a-6f3a0df4d2d1`.
+- Reconciled 404,028 Bronze rows and matched 3,427 source watchlist rows to 3,427 Lakebase rows with 3,427 distinct employee keys, zero null keys, and an as-of date of `2026-12-31`.
+
+Detailed orchestration and Lakebase evidence is stored in `evidence/orchestration_lakebase_summary.md`.
+
+## Next Steps
+
+### Deferred: Shared Semantic Access
+
+When an account administrator becomes available, replace the legacy workspace-local groups with account-level `aita_users` and `aita_hr_admin`, preserve approved membership, rerun `publish_semantics`, and verify effective Unity Catalog access. Until then, the demo must be described as owner-only and not production-ready for shared access.
 
 ### Phase 9: Genie Agents
 
 1. Commit parsed version-2 Agent configurations for Workforce & Attrition, Talent & Performance, and Recruiting under `src/genie/`.
 2. Validate all example and benchmark SQL before live Agent creation or update.
-3. Publish one Agent at a time after explicit approval, starting with Workforce & Attrition.
+3. Publish one Agent at a time for owner-only validation after explicit approval, starting with Workforce & Attrition; shared Agent access remains deferred.
 4. Reach at least 90% on 10 canonical benchmarks per Agent and capture representative generated-SQL transcripts.
 5. Expand each benchmark set to at least 30 valid items before productionizing the routing agent.
 
 ### Phase 10: Final Evidence and Handoff
 
-1. Complete remaining expectation results, AI samples, semantic grain checks, metric parity checks, Agent benchmarks, and Lakebase sync evidence.
+1. Run the final `evidence_report` after Agent evaluation, then complete the consolidated expectation, AI, semantic, metric, Agent, and Lakebase evidence.
 2. Verify the final job and pipeline graphs, Catalog Explorer lineage, and representative raw, Bronze, Silver, Gold, semantic, and Lakebase previews.
-3. Reconcile documentation with deployed resource IDs and the final orchestration DAG.
+3. Reconcile documentation with deployed resource IDs, the final orchestration DAG, and the deferred shared-access limitation.
 4. Commit each completed batch under the project owner's account with a clear message.

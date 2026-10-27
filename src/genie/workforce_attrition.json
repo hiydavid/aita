@@ -1,0 +1,99 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      {"id": "11000000000000000000000000000001", "question": ["Give me an executive view of workforce movement this year."]},
+      {"id": "11000000000000000000000000000002", "question": ["Where are engagement and workload warning signs emerging?"]},
+      {"id": "11000000000000000000000000000003", "question": ["Show flagged Consumer Banking employees and their watchlist reasons."]},
+      {"id": "11000000000000000000000000000004", "question": ["Which organization units need attrition attention?"]}
+    ]
+  },
+  "data_sources": {
+    "metric_views": [
+      {
+        "identifier": "${catalog}.${gold_schema}.mv_attrition",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "exit_reason", "description": ["AI-classified exit-interview reason."], "enable_entity_matching": true},
+          {"column_name": "job_family", "enable_entity_matching": true},
+          {"column_name": "org_type", "enable_entity_matching": true},
+          {"column_name": "org_unit_name", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "termination_type", "enable_entity_matching": true}
+        ]
+      },
+      {
+        "identifier": "${catalog}.${gold_schema}.mv_engagement",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "comment_theme", "description": ["AI-classified engagement-comment theme."], "enable_entity_matching": true},
+          {"column_name": "org_unit_name", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "survey_wave", "enable_entity_matching": true}
+        ]
+      },
+      {
+        "identifier": "${catalog}.${gold_schema}.mv_productivity",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "org_unit_name", "enable_entity_matching": true, "enable_format_assistance": true}
+        ]
+      },
+      {
+        "identifier": "${catalog}.${gold_schema}.mv_workforce",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "job_family", "enable_entity_matching": true},
+          {"column_name": "org_type", "enable_entity_matching": true},
+          {"column_name": "org_unit_name", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "region", "enable_entity_matching": true}
+        ]
+      }
+    ],
+    "tables": [
+      {
+        "identifier": "${catalog}.${gold_schema}.talent_watchlist",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "employee_id", "description": ["Employee identifier for approved watchlist detail."]},
+          {"column_name": "reasons", "description": ["Governed reasons aligned to risk_flags."]},
+          {"column_name": "risk_flags", "description": ["Governed watchlist rule identifiers."], "synonyms": ["flight risk", "watchlist signals"]}
+        ]
+      }
+    ]
+  },
+  "instructions": {
+    "example_question_sqls": [
+      {
+        "id": "21000000000000000000000000000001",
+        "question": ["How is monthly headcount trending by business line?"],
+        "sql": ["SELECT workforce.month, workforce.business_line, MEASURE(workforce.period_end_headcount) AS headcount FROM ${catalog}.${gold_schema}.mv_workforce AS workforce GROUP BY ALL ORDER BY workforce.month, workforce.business_line"],
+        "usage_guidance": ["Use the governed semi-additive headcount measure for time trends."]
+      },
+      {
+        "id": "21000000000000000000000000000002",
+        "question": ["Which units show the strongest workload signals?"],
+        "sql": ["SELECT engagement.org_unit_name, MEASURE(engagement.burnout_or_workload_signal_rate) AS signal_rate, MEASURE(engagement.survey_responses) AS responses FROM ${catalog}.${gold_schema}.mv_engagement AS engagement GROUP BY ALL ORDER BY signal_rate DESC LIMIT 10"],
+        "usage_guidance": ["Rank the governed rate and retain response volume."]
+      }
+    ],
+    "text_instructions": [
+      {
+        "id": "31000000000000000000000000000001",
+        "content": ["## PURPOSE\n- Serve HRBP, business-line, HR, and executive leaders with concise workforce decision support.\n\n## DISAMBIGUATION\n- Unless the user says otherwise, attrition means voluntary attrition and YTD means calendar YTD.\n\n## DATA QUALITY NOTES\n- Exit reasons, comment themes, and sentiment are AI-classified; identify them as such.\n\n## CONSTRAINTS\n- Use metric-view measures for rates and counts; do not recompute governed metrics from raw tables.\n- Treat talent_watchlist as a prompt for human investigation, never an employment decision.\n\n## Instructions you must follow when providing summaries\n- Lead with the answer, then key drivers, business implications, date range, population, and material caveats.\n- Prefer a small executive table and percentages rounded to one decimal place."]
+      }
+    ]
+  },
+  "benchmarks": {
+    "questions": [
+      {"id": "41000000000000000000000000000001", "question": ["How has voluntary attrition tracked YTD versus the last two years, by business line?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Compare governed voluntary attrition rates by calendar year and business line, identify material changes, and state the available date range."]},
+      {"id": "41000000000000000000000000000002", "question": ["Which contact centers have the highest voluntary attrition this year?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_workforce, filter organization type to Contact Center and the latest calendar year, rank by governed voluntary attrition rate, and include headcount context."]},
+      {"id": "41000000000000000000000000000003", "question": ["What are the top exit reasons in Consumer Banking contact centers?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Rank AI-classified exit reasons from mv_attrition for Consumer Banking contact centers and clearly label the reasons as AI-classified."]},
+      {"id": "41000000000000000000000000000004", "question": ["Which managers' teams account for most exits in Consumer Banking contact centers?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Rank manager IDs by exits in Consumer Banking contact centers and avoid joining current worker attributes onto historical exits."]},
+      {"id": "41000000000000000000000000000005", "question": ["Where is the burnout-or-workload signal rate highest?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Rank organization units using the governed burnout-or-workload signal rate, include response volume, and identify the signal as AI-classified."]},
+      {"id": "41000000000000000000000000000006", "question": ["Who are the standout managers by engagement and low attrition?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Synthesize manager engagement and historical exit evidence. Call out that a manager-level attrition rate is unavailable rather than inventing a denominator; use exit counts as a bounded proxy."]},
+      {"id": "41000000000000000000000000000007", "question": ["Who is on the watchlist in Consumer Banking, and why?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["List Consumer Banking employee IDs, risk flags, reasons, and as-of date from talent_watchlist, and state that the watchlist prompts investigation rather than a decision."]},
+      {"id": "41000000000000000000000000000008", "question": ["How did engagement and overtime change in Fraud Operations in the latest 12 months versus the prior 12 months?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_engagement and mv_productivity to compare the latest 12 complete months with the prior 12 months, quantify both changes, and keep survey-response and team-month populations distinct."]},
+      {"id": "41000000000000000000000000000009", "question": ["Which job families have the highest regrettable attrition rate?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Rank job families by the governed regrettable attrition rate and include average monthly headcount and regrettable voluntary exits."]},
+      {"id": "41000000000000000000000000000010", "question": ["What were headcount, hires, and exits in the latest month by region?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_workforce at the latest available month and report governed period-end headcount, hires, and exits by region."]}
+    ]
+  }
+}

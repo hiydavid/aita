@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      {"id": "12000000000000000000000000000001", "question": ["Where are our largest strategic-talent risks?"]},
+      {"id": "12000000000000000000000000000002", "question": ["Summarize high-performer and promotion signals for executives."]},
+      {"id": "12000000000000000000000000000003", "question": ["Which skills are strongest across our current workforce?"]},
+      {"id": "12000000000000000000000000000004", "question": ["Where is governed pay position below midpoint most common?"]}
+    ]
+  },
+  "data_sources": {
+    "metric_views": [
+      {
+        "identifier": "${catalog}.${gold_schema}.mv_talent",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "genai_exposure_tier", "description": ["AI-classified GenAI exposure of the current role."], "enable_entity_matching": true},
+          {"column_name": "job_family", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "job_level", "description": ["Career level. Senior-or-higher: Senior, Lead, Manager, or Director."], "enable_entity_matching": true},
+          {"column_name": "org_unit_name", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "pay_position_band", "enable_entity_matching": true},
+          {"column_name": "performance_rating", "description": ["Latest review label. Exceeds Expectations is the governed high-performer rating."], "enable_entity_matching": true},
+          {"column_name": "potential_rating", "enable_entity_matching": true}
+        ]
+      },
+      {
+        "identifier": "${catalog}.${gold_schema}.mv_talent_skills",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "demonstrated_skill", "description": ["Normalized AI-extracted skill from the latest performance review."], "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "genai_exposure_tier", "enable_entity_matching": true},
+          {"column_name": "job_family", "enable_entity_matching": true}
+        ]
+      }
+    ],
+    "tables": [
+      {
+        "identifier": "${catalog}.${gold_schema}.semantic_talent_snapshot",
+        "column_configs": [
+          {"column_name": "demonstrated_skills", "description": ["AI-extracted skills from the employee's latest performance review."]},
+          {"column_name": "employee_name", "description": ["Current employee display name; use only for approved employee-detail questions."]},
+          {"column_name": "genai_exposure_tier", "description": ["AI-classified GenAI exposure of the current role."]},
+          {"column_name": "job_level", "description": ["Career level. Senior-or-higher: Senior, Lead, Manager, or Director."]},
+          {"column_name": "pay_position_to_midpoint", "description": ["Governed masked pay position; unauthorized users receive null."]},
+          {"column_name": "risk_reasons", "description": ["Governed watchlist reasons; prompts for human investigation, never employment decisions."]},
+          {"column_name": "watchlist_flag", "description": ["Governed watchlist flag; prompts for human investigation, never employment decisions."]}
+        ]
+      }
+    ]
+  },
+  "instructions": {
+    "example_question_sqls": [
+      {
+        "id": "22000000000000000000000000000001",
+        "question": ["How does the high-performer share vary across career levels?"],
+        "sql": ["SELECT talent.job_level, MEASURE(talent.high_performer_share) AS high_performer_share, MEASURE(talent.high_performers) AS high_performers, MEASURE(talent.employees_with_latest_review) AS employees_with_review, MEASURE(talent.active_employees) AS active_employees FROM ${catalog}.${gold_schema}.mv_talent AS talent GROUP BY ALL ORDER BY high_performer_share DESC"],
+        "usage_guidance": ["Retain the governed numerator, reviewed denominator, and active population."]
+      },
+      {
+        "id": "22000000000000000000000000000002",
+        "question": ["What skills are most common in strategic roles?"],
+        "sql": ["SELECT skills.demonstrated_skill, MEASURE(skills.employees_demonstrating_skill) AS employees FROM ${catalog}.${gold_schema}.mv_talent_skills AS skills WHERE skills.strategic_role_flag = true GROUP BY ALL ORDER BY employees DESC LIMIT 15"],
+        "usage_guidance": ["Count skills through mv_talent_skills instead of grouping an array."]
+      }
+    ],
+    "text_instructions": [
+      {
+        "id": "32000000000000000000000000000001",
+        "content": ["## PURPOSE\n- Serve HRBP, business-line, HR, and executive leaders with concise current-talent decision support.\n\n## DATA QUALITY NOTES\n- GenAI exposure and demonstrated skills are AI-derived; identify them as such.\n- If average pay position is null, explain that the caller is not authorized and offer below-midpoint share instead.\n\n## CONSTRAINTS\n- Use metric-view measures for aggregates; use semantic_talent_snapshot only for approved employee-detail questions.\n- High performer means rating_numeric = 5 on the latest review.\n\n## Instructions you must follow when providing summaries\n- Lead with the answer, then key talent implications, as-of date, population, and material caveats.\n- Prefer a small executive table and percentages rounded to one decimal place."]
+      }
+    ]
+  },
+  "benchmarks": {
+    "questions": [
+      {"id": "42000000000000000000000000000001", "question": ["Which senior high performers have not been promoted in three or more years?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use semantic_talent_snapshot for employee detail, require latest rating 5, senior-or-higher level, and at least 36 months since promotion or hire."]},
+      {"id": "42000000000000000000000000000002", "question": ["What share of high performers in strategic roles are paid below midpoint?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_talent filtered to strategic roles and the high-performer rating, then report governed below-midpoint share and population."]},
+      {"id": "42000000000000000000000000000003", "question": ["Which job families have the highest GenAI exposure, and how many active employees are in them?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_talent, group by AI-classified exposure tier and job family, report active employees, and label exposure as AI-classified."]},
+      {"id": "42000000000000000000000000000004", "question": ["What AI-extracted skills show up most often for high performers in Technology?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_talent_skills, filter Technology, rank high performers demonstrating each skill, and label skills as AI-extracted."]},
+      {"id": "42000000000000000000000000000005", "question": ["What is the latest high-performer share by business line?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use governed high-performer share from mv_talent by business line and include active and reviewed populations."]},
+      {"id": "42000000000000000000000000000006", "question": ["Which job families have the highest below-midpoint share?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Rank job families using governed below-midpoint share and include the latest-compensation population."]},
+      {"id": "42000000000000000000000000000007", "question": ["What is the average time since promotion or hire for strategic roles?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use the governed average months since promotion or hire from mv_talent filtered to strategic roles; do not derive from current date."]},
+      {"id": "42000000000000000000000000000008", "question": ["Which high performers are also on the talent watchlist?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use semantic_talent_snapshot for employee detail, filter latest rating 5 and watchlist_flag, include governed reasons, and frame the watchlist as an investigation prompt."]},
+      {"id": "42000000000000000000000000000009", "question": ["How does high-potential share vary by job level?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Derive the share from mv_talent active-employee counts grouped by potential rating and job level; use High as the numerator and all rated employees as the denominator."]},
+      {"id": "42000000000000000000000000000010", "question": ["Which demonstrated skills are most common in high-GenAI-exposure roles?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_talent_skills filtered to high AI-classified GenAI exposure, rank employee counts by skill, and identify skills as AI-extracted."]}
+    ]
+  }
+}

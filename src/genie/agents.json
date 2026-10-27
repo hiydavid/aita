@@ -1,0 +1,25 @@
+{
+  "agents": [
+    {
+      "key": "workforce_attrition",
+      "title": "Aita Workforce & Attrition",
+      "description": "Executive workforce, headcount, attrition, engagement, productivity, and governed talent-watchlist analysis for HR and business leaders.",
+      "config": "workforce_attrition.json",
+      "benchmark_sql": "workforce_attrition_benchmarks.sql"
+    },
+    {
+      "key": "talent_performance",
+      "title": "Aita Talent & Performance",
+      "description": "Executive talent, performance, promotion, governed pay-position, skills, and GenAI-exposure analysis for HR and business leaders.",
+      "config": "talent_performance.json",
+      "benchmark_sql": "talent_performance_benchmarks.sql"
+    },
+    {
+      "key": "recruiting",
+      "title": "Aita Recruiting",
+      "description": "Executive requisition, hiring-funnel, time-to-fill, offer, backfill, and internal-mobility analysis for HR and business leaders.",
+      "config": "recruiting.json",
+      "benchmark_sql": "recruiting_benchmarks.sql"
+    }
+  ]
+}

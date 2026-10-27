@@ -1,0 +1,77 @@
+{
+  "version": 2,
+  "config": {
+    "sample_questions": [
+      {"id": "13000000000000000000000000000001", "question": ["Give me an executive summary of current hiring demand."]},
+      {"id": "13000000000000000000000000000002", "question": ["Where are the largest recruiting bottlenecks?"]},
+      {"id": "13000000000000000000000000000003", "question": ["How is internal mobility contributing to hiring?"]},
+      {"id": "13000000000000000000000000000004", "question": ["Which roles are hardest to fill and why?"]}
+    ]
+  },
+  "data_sources": {
+    "metric_views": [
+      {
+        "identifier": "${catalog}.${gold_schema}.mv_recruiting_funnel",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "decline_reason", "description": ["AI-classified offer-decline reason."], "enable_entity_matching": true},
+          {"column_name": "internal_genai_exposure_tier", "description": ["AI-classified tier of the internal applicant's role at application. GenAI-exposed means high or medium; exclude low."], "enable_entity_matching": true},
+          {"column_name": "job_family", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "org_unit_name", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "recruiting_source", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "status", "enable_entity_matching": true}
+        ]
+      },
+      {
+        "identifier": "${catalog}.${gold_schema}.mv_requisitions",
+        "column_configs": [
+          {"column_name": "business_line", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "job_family", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "job_title", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "licensed_role_flag", "description": ["License requirement. Licensed advisor roles require true and a job_family containing Advisor; all others form the comparison group."]},
+          {"column_name": "open_date", "description": ["Requisition open date. Derive reporting bounds from available data; do not truncate synthetic future dates to the wall clock."]},
+          {"column_name": "org_type", "enable_entity_matching": true},
+          {"column_name": "org_unit_name", "enable_entity_matching": true, "enable_format_assistance": true},
+          {"column_name": "requisition_type", "enable_entity_matching": true},
+          {"column_name": "status", "enable_entity_matching": true}
+        ]
+      }
+    ]
+  },
+  "instructions": {
+    "example_question_sqls": [
+      {
+        "id": "23000000000000000000000000000001",
+        "question": ["How many open requisitions are in each region?"],
+        "sql": ["SELECT requisitions.region, MEASURE(requisitions.open_requisitions) AS open_requisitions FROM ${catalog}.${gold_schema}.mv_requisitions AS requisitions GROUP BY ALL ORDER BY open_requisitions DESC"],
+        "usage_guidance": ["Use the governed open-requisition measure rather than filtering and recounting rows."]
+      },
+      {
+        "id": "23000000000000000000000000000002",
+        "question": ["Show funnel health by requested job level."],
+        "sql": ["SELECT funnel.job_level, MEASURE(funnel.applications) AS applications, MEASURE(funnel.applied_to_screen_conversion_rate) AS screen_rate, MEASURE(funnel.screen_to_interview_conversion_rate) AS interview_rate, MEASURE(funnel.interview_to_offer_conversion_rate) AS offer_rate, MEASURE(funnel.offer_to_hire_conversion_rate) AS hire_rate FROM ${catalog}.${gold_schema}.mv_recruiting_funnel AS funnel GROUP BY ALL ORDER BY applications DESC"],
+        "usage_guidance": ["Use each governed stage-conversion measure independently."]
+      }
+    ],
+    "text_instructions": [
+      {
+        "id": "33000000000000000000000000000001",
+        "content": ["## PURPOSE\n- Serve HRBP, business-line, HR, and executive leaders with concise recruiting decision support.\n\n## DATA QUALITY NOTES\n- Offer-decline reasons and GenAI exposure are AI-classified; identify them as such.\n\n## CONSTRAINTS\n- Use metric-view measures for requisition and funnel KPIs; do not recompute governed rates.\n- Time to fill covers filled requisitions only and uses calendar days.\n- Licensed roles use licensed_role_flag.\n\n## Instructions you must follow when providing summaries\n- Lead with the answer, then bottlenecks, business implications, date range, population, and material caveats.\n- Prefer a small executive table and percentages rounded to one decimal place."]
+      }
+    ]
+  },
+  "benchmarks": {
+    "questions": [
+      {"id": "43000000000000000000000000000001", "question": ["What is the average time to fill for licensed advisor roles versus all other roles?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_requisitions, define licensed advisor roles with licensed_role_flag and Advisor job families, compare governed average time to fill with all other roles, and note that only filled requisitions contribute."]},
+      {"id": "43000000000000000000000000000002", "question": ["Why are candidates declining offers for licensed roles?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_recruiting_funnel filtered to licensed roles, rank AI-classified decline reasons by declined offers, and label them as AI-classified."]},
+      {"id": "43000000000000000000000000000003", "question": ["How many backfill requisitions were opened in the two contact centers this year?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_requisitions, filter Contact Center and the latest calendar year, report governed backfill requisitions by organization unit and total."]},
+      {"id": "43000000000000000000000000000004", "question": ["Which open roles have internal applicants from GenAI-exposed job families?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_recruiting_funnel, filter Open status, internal candidates, and high or medium AI-classified internal exposure, then rank requested job families and organization units by internal applications."]},
+      {"id": "43000000000000000000000000000005", "question": ["What are offer acceptance and decline rates by recruiting source?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use governed offer acceptance and decline rates from mv_recruiting_funnel by recruiting source and include offers extended."]},
+      {"id": "43000000000000000000000000000006", "question": ["How do stage conversion rates differ for licensed and non-licensed roles?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Compare all four governed funnel-conversion rates by licensed_role_flag and include application volume."]},
+      {"id": "43000000000000000000000000000007", "question": ["Which business lines have the most open requisitions?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Rank business lines using the governed open-requisitions measure from mv_requisitions."]},
+      {"id": "43000000000000000000000000000008", "question": ["What are backfill share and average time to fill by job family?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use governed backfill share and average time to fill by job family, retaining requisition volume and the filled-only time-to-fill caveat."]},
+      {"id": "43000000000000000000000000000009", "question": ["Which organization units have the highest internal applicant share?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Rank organization units using governed internal applicant share and include applications and internal applications."]},
+      {"id": "43000000000000000000000000000010", "question": ["What are the top AI-classified decline reasons in Wealth Management?"], "answer": [{"format": "SQL", "content": []}], "evaluation_note": ["Use mv_recruiting_funnel for Wealth Management, rank decline reasons by declined offers, and identify reasons as AI-classified."]}
+    ]
+  }
+}

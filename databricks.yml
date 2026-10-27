@@ -17,6 +17,8 @@ variables:
     default: /Volumes/genie_workbench_dev_catalog/aita_bronze/landing
   warehouse_id:
     default: 813b0ad2f3036e46
+  workforce_genie_space_id:
+    default: 01f1d2385a3b1154885702428ed398c9
   lakebase_project:
     default: aita-lakebase
   lakebase_branch:

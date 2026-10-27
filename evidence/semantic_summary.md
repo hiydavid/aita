@@ -98,3 +98,17 @@ Snapshot mode is required because the source is a materialized view, and trigger
 | Maximum as-of date | 2026-12-31 | 2026-12-31 |
 
 After the final run, the synced table reported `SYNCED_TABLE_ONLINE_NO_PENDING_UPDATE`.
+
+## Genie Agent Authoring
+
+Three parsed version-2 configurations are stored under `src/genie/` for Workforce & Attrition, Talent & Performance, and Recruiting. Their primary semantic sources are the eight published metric views; `talent_watchlist` and `semantic_talent_snapshot` are attached only for approved employee-detail workflows.
+
+All six example queries and all 30 canonical benchmark queries passed read-only execution on warehouse `813b0ad2f3036e46`, with non-empty results. Agent-mode benchmark entries use response-quality rubrics and separate checked SQL as ground truth.
+
+| Owner-only Agent | Space | Baseline | Final | Conservatively failed item |
+|---|---|---:|---:|---|
+| Workforce & Attrition | `01f1d2385a3b1154885702428ed398c9` | 8/10 | 9/10 | Fraud Operations engagement indexes were `2.435632` and `3.812037`; checked values are `2.960057` and `4.068977`. |
+| Talent & Performance | `01f1d23a36c11172bc0d26281179b07c` | 6/10 | 9/10 | Correct 81.2102% below-midpoint result came from `semantic_talent_snapshot` instead of aggregate routing to `mv_talent`. |
+| Recruiting | `01f1d23c9d7f181cbc32056b828897ad` | 7/10 | 9/10 | Correct 2026 contact-center counts were described as through October 27 although the query covered the full calendar year. |
+
+Approved metadata repairs fixed the other baseline failures. All three Agents meet the 90% initial publication gate; shared access remains deferred.

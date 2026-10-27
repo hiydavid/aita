@@ -18,6 +18,7 @@ Run IDs, row counts, and check results are in `evidence/pipeline_summary.md` (ge
 | Phase 6: Semantic prerequisites | `last_promotion_date` on `dim_worker` and three semantic helper views; all 13 grain and parity checks pass |
 | Phase 7: Metric views | Eight metric views published by `publish_semantics`; all 12 direct-Gold parity checks pass; warehouse `CAN USE` applied |
 | Phase 8: Orchestration and Lakebase | Five-task `aita_pipeline` run passes; 3,427 watchlist rows synced to Lakebase |
+| Phase 9: Genie Agents | Three owner-only, metric-view-first Agents are live; their 30 Agent-mode benchmarks and six examples have 36 passing SQL checks, and each Agent meets the 90% initial gate |
 
 ## Deferred: Shared Semantic Access
 
@@ -27,15 +28,11 @@ As a result, the demo cannot show different users receiving different outputs. C
 
 Account-level groups are out of scope for this demo. If they are provisioned later, replace both groups, preserve approved membership, run `aita_apply_semantic_grants`, and verify effective Unity Catalog access.
 
+## Deferred: Production Benchmark Expansion
+
+Each Agent remains at its 10 canonical Agent-mode benchmarks. Expansion to at least 30 valid items and productionization of a routing agent are deferred; the three owner-only Agents have completed the current 90% initial validation gate.
+
 ## Next Steps
-
-### Phase 9: Genie Agents
-
-1. Commit parsed version-2 Agent configurations for Workforce & Attrition, Talent & Performance, and Recruiting under `src/genie/`.
-2. Validate all example and benchmark SQL before live Agent creation or update.
-3. Publish one Agent at a time for owner-only validation after explicit approval, starting with Workforce & Attrition; shared Agent access remains deferred.
-4. Reach at least 90% on 10 canonical benchmarks per Agent and capture representative generated-SQL transcripts.
-5. Expand each benchmark set to at least 30 valid items before productionizing the routing agent.
 
 ### Phase 10: Final Evidence and Handoff
 

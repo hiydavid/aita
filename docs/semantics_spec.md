@@ -165,11 +165,11 @@ Each Agent has a narrow description, approved data sources, structured column co
     1. How has voluntary attrition tracked YTD versus the last two years, by business line?
     2. Which contact centers have the highest voluntary attrition this year?
     3. What are the top exit reasons in Consumer Banking contact centers?
-    4. Which managers' teams account for most exits in those centers?
+    4. Which managers' teams account for most exits in Consumer Banking contact centers?
     5. Where is the burnout-or-workload signal rate highest?
     6. Who are the standout managers by engagement and low attrition?
     7. Who is on the watchlist in Consumer Banking, and why?
-    8. How did engagement and overtime change in Fraud Operations over the last year?
+    8. How did engagement and overtime change in Fraud Operations in the latest 12 months versus the prior 12 months?
     9. Which job families have the highest regrettable attrition rate?
     10. What were headcount, hires, and exits in the latest month by region?
 

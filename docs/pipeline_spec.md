@@ -12,7 +12,7 @@ The pipeline turns 12 synthetic HR datasets into a governed Gold star schema. AI
 
 ### Generated datasets
 
-Written to the landing volume defined in `docs/environment.md`.
+Written to the landing volume defined in `README.md`.
 
 | Domain | Dataset | Grain | Format | Free text for AI Functions |
 |---|---|---|---|---|
@@ -41,7 +41,7 @@ Written to the landing volume defined in `docs/environment.md`.
 
 ### Layers
 
-Catalog, schemas, and landing paths are defined in `docs/environment.md`; table names below omit the catalog prefix.
+Catalog, schemas, and landing paths are defined in `README.md`; table names below omit the catalog prefix.
 
 **Bronze (one streaming table per dataset)**
 
@@ -111,4 +111,4 @@ Governance intrinsic to Gold tables is versioned in pipeline SQL. Access grants 
 
 **No row filters:** All users see all business lines in v1; business-line ABAC remains a production roadmap item.
 
-Implementation workflow, environment settings, validation expectations, and contributor rules live in `AGENTS.md`, `docs/environment.md`, and `docs/progress.md`.
+Implementation workflow, environment settings, validation expectations, and contributor rules live in `AGENTS.md`, `README.md`, and `docs/progress.md`.

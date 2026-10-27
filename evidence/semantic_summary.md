@@ -80,7 +80,7 @@ All five `aita_pipeline` tasks passed: `generate_data`, `gold_governance`, `sdp_
 
 | Lakebase setting | Value |
 |---|---|
-| Project | `projects/aita-lakebase` (display name `aita_lakebase`, Postgres 17) |
+| Project | `aita_lakebase` (`projects/aita-lakebase`, Postgres 17) |
 | Branch and database | `production` / `databricks_postgres` |
 | Source | `genie_workbench_dev_catalog.aita_gold.talent_watchlist` |
 | Synced table | `genie_workbench_dev_catalog.aita_gold.talent_watchlist_serving` |

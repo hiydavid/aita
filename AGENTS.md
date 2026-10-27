@@ -13,7 +13,7 @@ Do not minify code, merge unrelated concerns, remove meaningful validation, or w
 
 ## Sources of Truth
 
-- Read `docs/environment.md` before running Databricks commands.
+- Read the environment, resource, and command sections of `README.md` before running Databricks commands.
 - Use `docs/pipeline_spec.md` for pipeline datasets, layers, grains, business rules, and governance requirements.
 - Use `docs/semantics_spec.md` for semantic helpers, metric definitions, Genie Agent behavior, access, and evaluation requirements.
 - Use `docs/progress.md` to identify completed work and the next unfinished phase.
@@ -36,6 +36,7 @@ Do not minify code, merge unrelated concerns, remove meaningful validation, or w
 
 ## Architecture Guardrails
 
+- Use synthetic data only.
 - Use SQL for pipeline transformations and Python for synthetic-data generation.
 - Keep Bronze faithful to landed data; put typing, conformance, deduplication, expectations, and AI enrichment in Silver.
 - Run repeated AI inference through private lookups over distinct normalized text, then join the cached results to published rows.
@@ -61,4 +62,5 @@ The reviewer reads at most 30 files, 9,000 characters per file, and 90,000 chara
 
 - Capture only evidence needed to prove behavior: run or update IDs, row counts, expectation results, representative AI outputs, grain checks, parity checks, and pass/fail conclusions.
 - Prefer compact tables and summaries over command transcripts or repeated narrative.
-- Plan to consolidate phase evidence into a reviewer-facing summary during the final consolidation pass.
+- Record evidence in `evidence/pipeline_summary.md` (generation through Gold) or `evidence/semantic_summary.md` (governance, semantic layer, Agents, and orchestration). Add a section to the matching file rather than creating a new evidence file.
+- Replace superseded results instead of appending history; keep a one-line note only when a resolved issue explains the current design.

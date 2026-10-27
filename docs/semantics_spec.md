@@ -8,7 +8,7 @@ This document defines access, grain-safe semantic helpers, reusable metric views
 
 ### Environment
 
-Environment values and commands are defined in `docs/environment.md`. The semantic layer uses governed Gold sources and a serverless SQL warehouse supplied through the bundle `warehouse_id` variable.
+Environment values and commands are defined in `README.md`. The semantic layer uses governed Gold sources and a serverless SQL warehouse supplied through the bundle `warehouse_id` variable.
 
 ### Access and grants
 

@@ -18,6 +18,7 @@ Environment values and commands are defined in `docs/environment.md`. The semant
 | `aita_hr_admin` | Everything granted to `aita_users`; also sees unmasked compensation through `mask_compensation` | The group already exists; approved administrators must also receive the semantic-layer grants |
 | Genie Agents | Query as the signed-in user | The user's Unity Catalog grants and compensation mask apply to every generated query |
 
+- `aita_users` and `aita_hr_admin` must be account-level groups assigned to the workspace; workspace-local groups are not Unity Catalog principals.
 - Unity Catalog grants are defined in `src/semantic/grants.sql`.
 - SQL warehouse and Genie Agent permissions are workspace-object permissions and are applied by the semantic deployment tooling.
 - The existing compensation mask remains authoritative: `base_salary`, `bonus`, and `pay_position_to_midpoint` are visible only to `aita_hr_admin`; band fields and `below_band_midpoint_flag` remain available to `aita_users`.
@@ -131,7 +132,7 @@ Definitions:
 - **Offer acceptance/decline rate:** accepted or declined offers divided by offers extended.
 - **Stage conversions:** separate measures for Applied→Screen, Screen→Interview, Interview→Offer, and Offer→Hire. A generic `stage` dimension is not published because the Gold funnel is one row per application rather than one row per application stage.
 
-Extra dimensions include `requisition_type`, `status`, `source`, `current_stage`, `decline_reason`, `internal_candidate_flag`, and the requested-role and internal-applicant job dimensions.
+Extra dimensions include `requisition_type`, `status`, `recruiting_source` (with `source` as a synonym), `current_stage`, `decline_reason`, `internal_candidate_flag`, and the requested-role and internal-applicant job dimensions.
 
 #### Watchlist
 

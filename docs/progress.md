@@ -159,14 +159,24 @@ Detailed governance evidence is stored in `evidence/gold_comments.md` and `evide
 
 Detailed semantic helper evidence is stored in `evidence/semantic_grain_checks.md`.
 
+### Phase 7: Metric Views
+
+- Published all eight specified Unity Catalog metric views through the bundle-managed `publish_semantics` SQL job on the serverless warehouse.
+- Added a historical `internal_applicant_job_code` to `fact_application_funnel` and renamed its raw `source` field to `recruiting_source` to avoid the reserved metric-view source alias while retaining a business-facing recruiting-source dimension.
+- Completed pipeline update `50b9c66a-d2d6-458a-8664-4f5c731317b7` and semantic run `1017977579100747`; all eight publication tasks succeeded.
+- Passed all 12 direct-Gold parity checks with zero violations, including yearly semi-additive headcount, previous-wave engagement, zero denominators, funnel conversions, temporal internal-job matching, and governed pay.
+- Applied explicit SQL warehouse `CAN USE` permissions to `aita_users` and `aita_hr_admin`.
+- Unity Catalog grants remain pending because both existing groups are legacy `WorkspaceGroup` principals, which Unity Catalog cannot resolve. Replace them with account-level groups assigned to the workspace, then rerun `publish_semantics`.
+
+Detailed Phase 7 evidence is stored in `evidence/metric_view_checks.md`.
+
 ## Next Steps
 
-### Phase 7: Metric Views and Grants
+### Phase 7: Complete Unity Catalog Grants
 
-1. Validate the deployed metric-view YAML syntax for window measures and semantic formats, then publish the eight grain-safe views defined in `docs/semantics_spec.md`.
-2. Apply semantic-layer Unity Catalog grants from `src/semantic/grants.sql` and SQL warehouse permissions through workspace tooling.
-3. Reconcile every metric to direct Gold SQL, including multi-month rates, zero denominators, semi-additive headcount, stage conversions, and masked pay behavior.
-4. Record the results in `evidence/metric_view_checks.md` and preserve the completed Gold governance evidence without repeating Phase 5.
+1. Replace the legacy workspace-local `aita_users` and `aita_hr_admin` groups with account-level groups assigned to this workspace while preserving approved membership.
+2. Rerun `publish_semantics`; confirm `apply_grants` succeeds and verify effective Unity Catalog access for both principals.
+3. Preserve the completed metric-view parity and Gold governance evidence without repeating Phase 5.
 
 ### Phase 8: Orchestration and Lakebase Sync
 

@@ -397,9 +397,10 @@ CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`fact_applicat
   candidate_id STRING COMMENT 'Stable external or internal candidate identifier.',
   requisition_id STRING COMMENT 'Requisition identifier joining to fact_requisition.',
   application_date DATE COMMENT 'Date the application was submitted.',
-  source STRING COMMENT 'Recruiting source that produced the application.',
+  recruiting_source STRING COMMENT 'Recruiting source that produced the application.',
   internal_candidate_flag BOOLEAN COMMENT 'True when internal_employee_id is populated; false otherwise.',
   internal_employee_id STRING COMMENT 'Employee identifier for an internal candidate; null for external candidates.',
+  internal_applicant_job_code STRING COMMENT 'Internal candidate job code effective on application_date; null for external candidates.',
   current_stage STRING COMMENT 'Latest application stage. Values include Applied, Screen, Interview, Offer, Hired, Rejected, Declined.',
   offer_outcome STRING COMMENT 'Offer result when an offer was made; null before an offer outcome.',
   applied_event_date DATE COMMENT 'Date of the Applied stage event.',
@@ -441,15 +442,26 @@ WITH stage_events AS (
     ) AS outcome_stage
   FROM `${catalog}`.`${silver_schema}`.`application_events`
   GROUP BY application_id
+),
+worker_versions AS (
+  SELECT
+    worker_id,
+    job_code,
+    `__START_AT`.event_date AS valid_from,
+    coalesce(`__END_AT`.event_date, DATE '9999-12-31') AS valid_to
+  FROM `${catalog}`.`${silver_schema}`.`worker_history`
+  WHERE `__END_AT` IS NULL
+    OR `__END_AT`.event_date > `__START_AT`.event_date
 )
 SELECT
   application.application_id,
   application.candidate_id,
   application.requisition_id,
   application.application_date,
-  application.source,
+  application.source AS recruiting_source,
   application.internal_worker_id IS NOT NULL AS internal_candidate_flag,
   application.internal_worker_id AS internal_employee_id,
+  internal_history.job_code AS internal_applicant_job_code,
   application.current_stage,
   application.offer_outcome,
   stage.applied_event_date,
@@ -491,4 +503,8 @@ SELECT
   application.candidate_skills
 FROM `${catalog}`.`${silver_schema}`.`applications_enriched` AS application
 INNER JOIN stage_events AS stage
-  ON application.application_id = stage.application_id;
+  ON application.application_id = stage.application_id
+LEFT JOIN worker_versions AS internal_history
+  ON application.internal_worker_id = internal_history.worker_id
+  AND application.application_date >= internal_history.valid_from
+  AND application.application_date < internal_history.valid_to;

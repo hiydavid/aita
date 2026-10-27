@@ -35,6 +35,7 @@ These are passed to the SDP pipeline as configuration parameters. Pipeline SQL m
 |---|---|
 | SDP pipeline | `aita_sdp` |
 | Lakeflow job | `aita_pipeline` (`generate_data` → `sdp_pipeline` → `sync_lakebase` → `evidence_report`) |
+| Semantic publication job | `aita_publish_semantics` |
 
 ## Commands
 
@@ -63,7 +64,7 @@ Required privileges: USE CATALOG and CREATE SCHEMA on the catalog, and CREATE VO
 ## Semantic access setup
 
 - Use the serverless `genie-workbench-test` SQL warehouse through the `warehouse_id` bundle variable.
-- Create the workspace group `aita_users` and add only approved demo users and the Aita app service principal.
+- Provision `aita_users` and `aita_hr_admin` as account-level groups, assign them to the workspace, and add only approved users and service principals. Legacy `WorkspaceGroup` principals cannot receive Unity Catalog grants.
 - Preserve `aita_hr_admin` membership separately; semantic grants apply to both groups, while only `aita_hr_admin` receives unmasked compensation.
 
 ## Rules for Genie Code

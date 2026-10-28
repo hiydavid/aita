@@ -19,6 +19,7 @@ Run IDs, row counts, and check results are in `evidence/pipeline_summary.md` (ge
 | Phase 7: Metric views | Eight metric views published by `publish_semantics`; all 12 direct-Gold parity checks pass; warehouse `CAN USE` applied |
 | Phase 8: Orchestration and Lakebase | Five-task `aita_pipeline` run passes; 3,427 watchlist rows synced to Lakebase |
 | Phase 9: Genie Agents | Three owner-only, metric-view-first Agents are live; their 30 Agent-mode benchmarks and six examples have 36 passing SQL checks, and each Agent meets the 90% initial gate |
+| Phase 10: Final evidence and handoff | Live DAGs, lineage, layer previews, deployed IDs, expectation results, AI outputs, Agent sources, and Lakebase status reconciled with source and evidence |
 
 ## Deferred: Shared Semantic Access
 
@@ -32,11 +33,6 @@ Account-level groups are out of scope for this demo. If they are provisioned lat
 
 Each Agent remains at its 10 canonical Agent-mode benchmarks. Expansion to at least 30 valid items and productionization of a routing agent are deferred; the three owner-only Agents have completed the current 90% initial validation gate.
 
-## Next Steps
+## Handoff
 
-### Phase 10: Final Evidence and Handoff
-
-1. After Agent evaluation, refresh the evidence summaries against the final orchestration run, including expectation, AI, semantic, metric, Agent, and Lakebase results.
-2. Verify the final job and pipeline graphs, Catalog Explorer lineage, and representative raw, Bronze, Silver, Gold, semantic, and Lakebase previews.
-3. Reconcile documentation with deployed resource IDs, the final orchestration DAG, and the deferred shared-access limitation.
-4. Commit each completed batch under the project owner's account with a clear message.
+The build and final verification are complete. Shared access, 30-benchmark expansion, and a production routing agent remain deferred. The project owner handles commits.

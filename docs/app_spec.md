@@ -106,7 +106,7 @@ Release gates:
 
 Record compact app, routing, Lakebase, and deployment results in `evidence/semantic_summary.md`; do not create separate routing, transcript, excerpt, or deployment evidence files.
 
-### Remaining implementation checks
+### Foundation decisions
 
-1. Select the exact streaming orchestrator model after checking workspace availability, latency, and tool-calling behavior.
-2. Confirm the scaffolded Lakebase thread store's metadata surface and add only the supplemental routing metadata it cannot represent.
+1. The owner-only development app uses `databricks-claude-haiku-5-5`; the workspace probe confirmed streaming tool calls and correct single-domain routing behavior.
+2. AppKit `0.84.0` exposes a `ThreadStore` interface but no persistent implementation and no routing metadata. The app implements that interface over `aita_app.threads` and `aita_app.messages`, with only the missing per-turn routing fields in `aita_app.turn_metadata`.

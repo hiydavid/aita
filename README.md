@@ -12,6 +12,7 @@ FE Bar project submission. Aita turns 12 synthetic HR datasets for a fictional b
 | `src/pipeline/` | SDP SQL for Bronze, Silver, Gold, and semantic helper views |
 | `src/semantic/` | Metric views, Unity Catalog grants, and semantic validation SQL |
 | `src/genie/` | Parsed version-2 Genie Agent configs, benchmark SQL, publication tooling, and Agent-mode evaluation |
+| `src/app/aita/` | AppKit owner-only development app, Lakebase thread store, and Chat/Watchlist/History shell |
 | `docs/pipeline_spec.md` | Pipeline datasets, layers, grains, business rules, and Gold governance |
 | `docs/semantics_spec.md` | Semantic helpers, metric definitions, Genie Agents, access, and evaluation |
 | `docs/progress.md` | Phase status and next steps |
@@ -33,6 +34,7 @@ FE Bar project submission. Aita turns 12 synthetic HR datasets for a fictional b
 | Lakebase project ID | `aita-lakebase` | `lakebase_project` |
 | Lakebase branch | `projects/aita-lakebase/branches/production` | `lakebase_branch` |
 | Lakebase database | `databricks_postgres` | `lakebase_database` |
+| Lakebase database resource | `projects/aita-lakebase/branches/production/databases/databricks-postgres` | `lakebase_database_resource` |
 | Lakebase synced table | `genie_workbench_dev_catalog.aita_gold.talent_watchlist_serving` | `lakebase_synced_table` |
 | Lakebase sync pipeline | `460f8caf-0187-4590-8ae3-38c306cff78c` | `lakebase_sync_pipeline_id` |
 | Pipeline and job compute | Serverless | |
@@ -50,6 +52,8 @@ Catalog, schema, and landing-path values are passed to the SDP pipeline as confi
 | Workforce & Attrition Agent | `01f1d2385a3b1154885702428ed398c9` |
 | Talent & Performance Agent | `01f1d23a36c11172bc0d26281179b07c` |
 | Recruiting Agent | `01f1d23c9d7f181cbc32056b828897ad` |
+| Aita development app | `aita-david-huang` (`e4878bfe-f34e-403f-bc96-fdeb5048f3e8`, owner-only) |
+| App orchestrator model | `databricks-claude-haiku-5-5` |
 | Lakebase project | `aita_lakebase` (`projects/aita-lakebase`, Postgres 17) |
 | Lakebase synced table | `aita_gold.talent_watchlist_serving` |
 
@@ -58,6 +62,7 @@ Catalog, schema, and landing-path values are passed to the SDP pipeline as confi
 - Check the profile: `databricks current-user me --profile genie-workbench`
 - Validate: `databricks bundle validate -t dev --profile genie-workbench`
 - Deploy: `databricks bundle deploy -t dev --profile genie-workbench`
+- Deploy and start the app: `databricks bundle run aita_app -t dev --profile genie-workbench`
 - Run: `databricks bundle run aita_pipeline -t dev --profile genie-workbench`
 
 ## Genie Agent Development

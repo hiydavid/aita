@@ -1,0 +1,14 @@
+command: ['npm', 'run', 'start']
+env:
+  - name: DATABRICKS_SERVING_ENDPOINT_NAME
+    valueFrom: orchestrator-endpoint
+  - name: DATABRICKS_GENIE_SPACE_ID
+    valueFrom: genie-workforce-attrition
+  - name: DATABRICKS_GENIE_SPACE_WORKFORCE_ATTRITION
+    valueFrom: genie-workforce-attrition
+  - name: DATABRICKS_GENIE_SPACE_TALENT_PERFORMANCE
+    valueFrom: genie-talent-performance
+  - name: DATABRICKS_GENIE_SPACE_RECRUITING
+    valueFrom: genie-recruiting
+  - name: LAKEBASE_ENDPOINT
+    valueFrom: postgres

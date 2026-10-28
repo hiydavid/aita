@@ -1,6 +1,6 @@
 # Semantic and Governance Evidence
 
-Gold governance through orchestration (Phases 5–8), run on profile `genie-workbench`, bundle target `dev`, and serverless SQL warehouse `genie-workbench-test` (`813b0ad2f3036e46`). Every check below passed unless marked deferred.
+Phases 5–8 ran with profile `genie-workbench`, target `dev`, and serverless warehouse `813b0ad2f3036e46`. Every check passed unless marked deferred.
 
 ## Runs
 
@@ -15,23 +15,14 @@ Semantic job `675414841768481` passed all eight parallel publication tasks; the 
 
 ## Gold Governance
 
-- Comments: 13 Gold tables, 187 Gold columns, and 24 published Bronze and Silver tables, with zero missing; the private Silver AI lookup views also carry table comments.
-- Compensation contract: Silver `annual_bonus` publishes as `bonus`, and `compa_ratio` is replaced by `pay_position_to_midpoint`. The legacy `annual_bonus`, `compa_ratio`, `range_penetration`, and `bonus_pct_of_base` columns are absent. 40,000 rows, 40,000 distinct `compensation_id` values, zero null band values.
+- Comments: zero missing across 13 Gold tables, 187 Gold columns, 24 published Bronze/Silver tables, and private Silver AI lookup views.
+- Compensation: 40,000 rows and distinct IDs, zero null bands; `bonus` and `pay_position_to_midpoint` replace the four legacy compensation columns named in the spec.
 - Regrettable exits: 890 of 1,161 exits have a latest `rating_numeric` of 4 or 5, with zero rows disagreeing with the rule.
 - Mask: `genie_workbench_dev_catalog.aita_gold.mask_compensation` takes and returns `DECIMAL(18,4)` and returns values only to `aita_hr_admin` (`2120313189110874`). `DESCRIBE TABLE EXTENDED` shows it attached to `base_salary`, `bonus`, and `pay_position_to_midpoint`. No row filter is attached.
 
 ### Mask Comparison
 
-The same query (`SELECT employee_id, compensation_year, base_salary, bonus, band_min, band_mid, band_max, pay_position_to_midpoint FROM genie_workbench_dev_catalog.aita_gold.fact_compensation ORDER BY employee_id, compensation_year LIMIT 5`) ran as `david.huang@databricks.com` before and after approved addition to `aita_hr_admin`.
-
-| Caller | employee_id | Year | base_salary | bonus | band_mid | pay_position_to_midpoint |
-|---|---|---:|---:|---:|---:|---:|
-| Non-member | EMP000001 | 2025 | NULL | NULL | 52000.00 | NULL |
-| Non-member | EMP000002 | 2025 | NULL | NULL | 52000.00 | NULL |
-| HR admin | EMP000001 | 2025 | 54399.0700 | 5828.8600 | 52000.00 | 1.0461 |
-| HR admin | EMP000002 | 2025 | 55895.4200 | 10788.3800 | 52000.00 | 1.0749 |
-
-`band_min` (41600.00) and `band_max` (65000.00) were visible to both callers. Across all 40,000 rows, the non-member saw NULL in all three masked columns and populated band values. The member saw every column.
+The same compensation query ran as `david.huang@databricks.com` before and after approved addition to `aita_hr_admin`. Across all 40,000 rows, the non-member saw NULL for `base_salary`, `bonus`, and `pay_position_to_midpoint` while band values remained populated; the member saw every value. Representative member values for `EMP000001` were `54399.0700`, `5828.8600`, and `1.0461`.
 
 ## Semantic Helpers
 
@@ -41,14 +32,12 @@ The same query (`SELECT employee_id, compensation_year, base_salary, bonus, band
 | `semantic_talent_snapshot` | 18,839 | active employee |
 | `semantic_talent_skills` | 58,656 | active employee × normalized demonstrated skill |
 
-All 13 checks in `src/semantic/validation.sql` returned zero violations. They cover:
+All 13 checks in `src/semantic/validation.sql` returned zero violations, covering:
 
 - `dim_worker` grain and parity of `last_promotion_date` with Silver history (3,019 employees with a promotion)
 - grain, row, movement-field, and regrettable-exit parity for the workforce helper (680 regrettable voluntary exits)
 - talent-snapshot grain and active population
-- latest performance and compensation selection
-- independent recomputation of the 1095-day and 36-month stalled-high-performer rule (969 flagged, zero violations)
-- grain and explode parity for the talent-skills helper
+- latest performance/compensation selection; independent 1095-day and 36-month stalled-high-performer recomputation (969 flagged); talent-skills grain/explode parity
 
 The snapshot uses Gold business date `2026-12-31`, and the watchlist is unchanged at 3,427 rows. `SHOW CREATE TABLE` confirms `semantic_talent_snapshot.pay_position_to_midpoint` keeps `mask_compensation`; the HR administrator saw 18,839 populated values.
 
@@ -56,7 +45,7 @@ The snapshot uses Gold business date `2026-12-31`, and the watchlist is unchange
 
 All eight views are registered as `METRIC_VIEW`: `mv_workforce`, `mv_attrition`, `mv_engagement`, `mv_productivity`, `mv_talent`, `mv_talent_skills`, `mv_requisitions`, and `mv_recruiting_funnel`.
 
-After job `675414841768481`, `DESCRIBE TABLE EXTENDED` identified all eight outputs as `METRIC_VIEW` with populated YAML, and canonical `SHOW CREATE TABLE` output was byte-identical before and after publication. The previously recorded 12 direct-Gold parity checks remain unchanged. Coverage includes:
+After job `675414841768481`, all outputs were `METRIC_VIEW` with populated YAML and byte-identical canonical DDL before/after publication. Twelve direct-Gold parity checks cover:
 
 - yearly semi-additive headcount and multi-month rates
 - previous-wave engagement
@@ -71,12 +60,12 @@ As `aita_hr_admin`, `mv_talent` returned 18,839 active employees, 2,393 high per
 ## Access
 
 - SQL warehouse `813b0ad2f3036e46` grants explicit `CAN USE` to `aita_users` (`2124487482070223`) and `aita_hr_admin`.
-- `aita_users` contains only the project owner. No Aita app service principal exists yet.
+- `aita_users` contains only the project owner. The owner-only app service principal has Lakebase access but no Unity Catalog grants; Genie executes OBO.
 - Unity Catalog grants are deferred. Both groups report `resourceType: WorkspaceGroup`, and Unity Catalog returns `PRINCIPAL_DOES_NOT_EXIST` for `aita_users`. The demo runs under the owner-only exception in `docs/semantics_spec.md`, with no per-user grant or mask bypass. `src/semantic/grants.sql` is ready to rerun once account-level groups exist.
 
 ## Orchestration and Lakebase
 
-All five `aita_pipeline` tasks passed in run `1094796673508321`: `generate_data`, `gold_governance`, `sdp_pipeline`, `publish_semantics`, and `sync_lakebase`. The SDP task uses full refresh because the generator replaces complete landing snapshots; this stops repeated runs from appending duplicate files to Bronze, and the run restored the expected 404,028 Bronze rows. Shared grants stay in the separate `aita_apply_semantic_grants` job.
+All five `aita_pipeline` tasks passed in run `1094796673508321`: `generate_data`, `gold_governance`, `sdp_pipeline`, `publish_semantics`, and `sync_lakebase`. Full refresh matches the generator's complete snapshots and restored 404,028 Bronze rows without duplicate appends. Shared grants remain in `aita_apply_semantic_grants`.
 
 | Lakebase setting | Value |
 |---|---|
@@ -107,12 +96,20 @@ All six example queries and all 30 canonical benchmark queries passed read-only 
 
 | Owner-only Agent | Space | Baseline | Final | Conservatively failed item |
 |---|---|---:|---:|---|
-| Workforce & Attrition | `01f1d2385a3b1154885702428ed398c9` | 8/10 | 9/10 | Fraud Operations engagement indexes were `2.435632` and `3.812037`; checked values are `2.960057` and `4.068977`. |
-| Talent & Performance | `01f1d23a36c11172bc0d26281179b07c` | 6/10 | 9/10 | Correct 81.2102% below-midpoint result came from `semantic_talent_snapshot` instead of aggregate routing to `mv_talent`. |
-| Recruiting | `01f1d23c9d7f181cbc32056b828897ad` | 7/10 | 9/10 | Correct 2026 contact-center counts were described as through October 27 although the query covered the full calendar year. |
+| Workforce & Attrition | `01f1d2385a3b1154885702428ed398c9` | 8/10 | 9/10 | Incorrect Fraud Operations engagement indexes. |
+| Talent & Performance | `01f1d23a36c11172bc0d26281179b07c` | 6/10 | 9/10 | Correct result routed to the detail view. |
+| Recruiting | `01f1d23c9d7f181cbc32056b828897ad` | 7/10 | 9/10 | Full-year result described as year-to-date. |
 
 Approved metadata repairs fixed the other baseline failures. All three Agents meet the 90% initial publication gate; shared access remains deferred.
 
+## App Foundation
+
+- AppKit `0.84.0` app `aita-david-huang` (`e4878bfe-f34e-403f-bc96-fdeb5048f3e8`) is `RUNNING`; deployment `01f1d31d0d1c1622b1734735e14664aa` succeeded. ACLs contain only the owner and inherited workspace admins. Effective user scopes are `genie` plus identity-read defaults.
+- `databricks-claude-haiku-5-5` produced and streamed the correct `workforce_attrition` tool call in 1.63 seconds; GPT-5.6 Terra/Luna rejected tools in default reasoning mode.
+- Genie aliases `workforce_attrition`, `talent_performance`, and `recruiting` run OBO. The model and Lakebase run as the app service principal.
+- `aita_app.threads`, `messages`, and `turn_metadata` provide server-owned user isolation, routing metadata, and 30-day purge-on-access; the app service principal owns all three.
+- Lakebase grants are limited to `USAGE` on `aita_gold` and `SELECT` on `aita_gold.talent_watchlist_serving`. The app-SP startup check returned 3,427 rows, 3,427 distinct employee IDs, zero null keys, and maximum `as_of_date` `2026-12-31`.
+
 ## Final Handoff Check
 
-On October 27, strict bundle validation and live metadata reconciliation passed. The job, SDP, semantic job, sync pipeline, Agent IDs, warehouse, and DAG match source control and the IDs above. Catalog lineage and previews cover raw through Bronze, Silver, Gold, helpers, metric views, and Lakebase; counts remain 20,000 workers, 18,839 active talent rows, and 3,427 source/synced watchlist rows. The final SDP update reported 10 expectation results with zero failures, all five AI-enriched tables had zero AI-error rows, and Lakebase remained `SYNCED_TABLE_ONLINE_NO_PENDING_UPDATE`.
+On October 28, strict bundle validation, app deployment, and live metadata reconciliation passed. The job, pipelines, Agents, warehouse, app resources, and DAG match source control and the IDs above. Counts remain 20,000 workers, 18,839 active talent rows, and 3,427 source/synced/app-served watchlist rows; the final SDP update still has zero expectation or AI-error failures.

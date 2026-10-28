@@ -1,6 +1,6 @@
 # Aita Build Progress
 
-Last updated: October 27, 2026
+Last updated: October 28, 2026
 
 ## Completed
 
@@ -21,6 +21,7 @@ Run IDs, row counts, and check results are in `evidence/pipeline_summary.md` (ge
 | Phase 9: Genie Agents | Three owner-only, metric-view-first Agents are live; their 30 Agent-mode benchmarks and six examples have 36 passing SQL checks, and each Agent meets the 90% initial gate |
 | Phase 10: Pipeline and semantic handoff | Live DAGs, lineage, layer previews, deployed IDs, expectation results, AI outputs, Agent sources, and Lakebase status reconciled with source and evidence |
 | Phase 11: App specification | `docs/app_spec.md` defines routing, Chat/Watchlist/History behavior, Lakebase state, security boundaries, evaluation, and release gates; implementation has not started |
+| Phase 12: App foundation | AppKit `0.84.0` shell deployed as owner-only `aita-david-huang`; Haiku 5.5 streams tool calls, Genie is OBO, Lakebase is SP-only, and persistent user-scoped threads plus supplemental routing metadata are initialized |
 
 ## Deferred: Shared Semantic Access
 
@@ -36,19 +37,18 @@ Each Agent remains at its 10 canonical Agent-mode benchmarks. The app's initial 
 
 ## Next Phases: Aita App
 
-The implementation contract is in `docs/app_spec.md`. No app source, bundle resource, thread store, deployment, or routing evaluation exists yet. The selected architecture is an AppKit routing agent with a streaming orchestrator model, AppKit's Lakebase-backed thread store, and 30-day conversation retention with user deletion.
+The implementation contract is in `docs/app_spec.md`. The owner-only app foundation is live; routing, Watchlist/History behavior, and evaluation remain.
 
 | Phase | Scope |
 |---|---|
-| Phase 12: App foundation | Select the orchestrator model, scaffold from the current AppKit manifest, wire OBO Genie and service-principal Lakebase access, verify thread metadata, and deploy an owner-only shell |
 | Phase 13: Routing and Chat | Implement domain routing, multi-Agent synthesis, follow-up context, SQL provenance, streaming, and trust states |
-| Phase 14: Watchlist and History | Implement synced-table reads, thread persistence, user isolation, 30-day retention, deletion, filtering, pagination, and required UI states |
+| Phase 14: Watchlist and History | Implement synced-table reads, metadata capture, replay, deletion, filtering, pagination, and required UI states; verify user isolation and retention end to end |
 | Phase 15: Evaluation and handoff | Run routing, SQL, parity, security, and state checks; deploy; and record compact evidence |
 
 The initial routing evaluation must cover all 30 canonical single-domain questions, the three semantic cross-domain examples, and at least two ambiguous questions, with at least 90% exact-match routing accuracy.
 
-The existing Lakebase-synced watchlist and three domain Agents are ready as upstream dependencies. Shared-user release remains blocked until account-level groups satisfy semantic publication gate 3; only an owner-scoped development deployment may proceed under the constrained-demo exception.
+The existing Lakebase-synced watchlist and three domain Agents are wired to the app. Shared-user release remains blocked until account-level groups satisfy semantic publication gate 3; only the owner-scoped development deployment may proceed under the constrained-demo exception.
 
 ## Handoff
 
-The pipeline, semantic layer, domain Agents, and Lakebase serving path are complete. Aita app phases 12 through 15 are unimplemented. Shared access, per-Agent 30-benchmark expansion, and production routing remain deferred. The project owner handles commits.
+The pipeline, semantic layer, domain Agents, Lakebase serving path, and app foundation are complete. Aita app phases 13 through 15 remain. Shared access, per-Agent 30-benchmark expansion, and production routing remain deferred. The project owner handles commits.

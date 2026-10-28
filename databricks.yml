@@ -19,12 +19,22 @@ variables:
     default: 813b0ad2f3036e46
   workforce_genie_space_id:
     default: 01f1d2385a3b1154885702428ed398c9
+  talent_genie_space_id:
+    default: 01f1d23a36c11172bc0d26281179b07c
+  recruiting_genie_space_id:
+    default: 01f1d23c9d7f181cbc32056b828897ad
+  app_name:
+    default: aita-${workspace.current_user.domain_friendly_name}
+  app_orchestrator_endpoint:
+    default: databricks-claude-haiku-5-5
   lakebase_project:
     default: aita-lakebase
   lakebase_branch:
     default: projects/aita-lakebase/branches/production
   lakebase_database:
     default: databricks_postgres
+  lakebase_database_resource:
+    default: projects/aita-lakebase/branches/production/databases/databricks-postgres
   lakebase_synced_table:
     default: genie_workbench_dev_catalog.aita_gold.talent_watchlist_serving
   lakebase_sync_pipeline_id:

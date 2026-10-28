@@ -1,0 +1,35 @@
+resources:
+  apps:
+    aita_app:
+      name: ${var.app_name}
+      description: Aita routes governed HR questions and serves the talent watchlist.
+      source_code_path: ../src/app/aita
+      lifecycle:
+        started: true
+      user_api_scopes:
+        - genie
+      resources:
+        - name: orchestrator-endpoint
+          serving_endpoint:
+            name: ${var.app_orchestrator_endpoint}
+            permission: CAN_QUERY
+        - name: postgres
+          postgres:
+            branch: ${var.lakebase_branch}
+            database: ${var.lakebase_database_resource}
+            permission: CAN_CONNECT_AND_CREATE
+        - name: genie-workforce-attrition
+          genie_space:
+            name: workforce-attrition
+            space_id: ${var.workforce_genie_space_id}
+            permission: CAN_RUN
+        - name: genie-talent-performance
+          genie_space:
+            name: talent-performance
+            space_id: ${var.talent_genie_space_id}
+            permission: CAN_RUN
+        - name: genie-recruiting
+          genie_space:
+            name: recruiting
+            space_id: ${var.recruiting_genie_space_id}
+            permission: CAN_RUN

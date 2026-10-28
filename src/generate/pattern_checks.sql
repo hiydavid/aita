@@ -88,26 +88,21 @@ applications AS (
     format => 'json'
   )
 ),
-contact_center_population AS (
-  SELECT COUNT(*) AS worker_count
-  FROM workers
-  WHERE org_unit_id IN ('ORG001', 'ORG002')
-),
-company_population AS (
-  SELECT COUNT(*) AS worker_count
-  FROM workers
-),
-contact_center_exits AS (
+population_stats AS (
   SELECT
-    COUNT(*) AS exit_count,
-    COUNT_IF(manager_id IN ('EMP000001', 'EMP000073', 'EMP000002')) AS target_manager_exits
-  FROM job_history
-  WHERE event_type = 'EXIT'
-    AND org_unit_id IN ('ORG001', 'ORG002')
-    AND TO_DATE(event_date) BETWEEN DATE '2026-02-01' AND DATE '2026-05-31'
+    COUNT(*) AS company_worker_count,
+    COUNT_IF(org_unit_id IN ('ORG001', 'ORG002')) AS center_worker_count,
+    COUNT_IF(termination_date IS NOT NULL) / COUNT(*) AS company_attrition_rate
+  FROM workers
 ),
-company_exits AS (
-  SELECT COUNT(*) AS exit_count
+exit_stats AS (
+  SELECT
+    COUNT(*) AS company_exit_count,
+    COUNT_IF(org_unit_id IN ('ORG001', 'ORG002')) AS center_exit_count,
+    COUNT_IF(
+      org_unit_id IN ('ORG001', 'ORG002')
+        AND manager_id IN ('EMP000001', 'EMP000073', 'EMP000002')
+    ) AS target_manager_exits
   FROM job_history
   WHERE event_type = 'EXIT'
     AND TO_DATE(event_date) BETWEEN DATE '2026-02-01' AND DATE '2026-05-31'
@@ -122,15 +117,13 @@ contact_center_comments AS (
 ),
 attrition_pattern AS (
   SELECT
-    cc.exit_count / NULLIF(ccp.worker_count, 0) AS center_exit_rate,
-    ce.exit_count / NULLIF(cp.worker_count, 0) AS company_exit_rate,
-    cc.target_manager_exits / NULLIF(cc.exit_count, 0) AS target_manager_share,
+    es.center_exit_count / NULLIF(ps.center_worker_count, 0) AS center_exit_rate,
+    es.company_exit_count / NULLIF(ps.company_worker_count, 0) AS company_exit_rate,
+    es.target_manager_exits / NULLIF(es.center_exit_count, 0) AS target_manager_share,
     ccc.schedule_comment_count / NULLIF(ccc.interview_count, 0) AS schedule_comment_share,
-    cc.exit_count AS center_exits
-  FROM contact_center_exits cc
-  CROSS JOIN company_exits ce
-  CROSS JOIN contact_center_population ccp
-  CROSS JOIN company_population cp
+    es.center_exit_count AS center_exits
+  FROM exit_stats es
+  CROSS JOIN population_stats ps
   CROSS JOIN contact_center_comments ccc
 ),
 promotions AS (
@@ -175,16 +168,6 @@ fraud_productivity AS (
   FROM team_productivity
   WHERE team_id IN ('ORG037', 'ORG038')
 ),
-fraud_burnout AS (
-  SELECT
-    fe.early_score,
-    fe.late_score,
-    fe.burnout_comment_share,
-    fp.early_overtime,
-    fp.late_overtime
-  FROM fraud_engagement fe
-  CROSS JOIN fraud_productivity fp
-),
 team_engagement AS (
   SELECT org_unit_id, AVG(engagement_score) AS avg_engagement
   FROM engagement_surveys
@@ -202,21 +185,17 @@ team_attrition AS (
   FROM workers
   GROUP BY org_unit_id
 ),
-company_attrition AS (
-  SELECT COUNT_IF(termination_date IS NOT NULL) / COUNT(*) AS attrition_rate
-  FROM workers
-),
 standout_managers AS (
   SELECT COUNT(*) AS manager_count
   FROM org_units o
   INNER JOIN team_engagement e ON o.org_unit_id = e.org_unit_id
   INNER JOIN team_performance p ON o.org_unit_id = p.team_id
   INNER JOIN team_attrition a ON o.org_unit_id = a.org_unit_id
-  CROSS JOIN company_attrition c
+  CROSS JOIN population_stats ps
   WHERE o.standout_manager_flag = true
     AND e.avg_engagement >= 4.4
     AND p.avg_csat >= 4.6
-    AND a.attrition_rate < c.attrition_rate * 0.5
+    AND a.attrition_rate < ps.company_attrition_rate * 0.5
 ),
 genai_internal_mobility AS (
   SELECT COUNT(DISTINCT a.application_id) AS application_count
@@ -255,19 +234,13 @@ licensed_hiring AS (
   FROM licensed_fill lf
   CROSS JOIN licensed_declines ld
 ),
-post_spike_backfills AS (
-  SELECT COUNT(*) AS requisition_count
+backfill_counts AS (
+  SELECT
+    COUNT_IF(TO_DATE(open_date) BETWEEN DATE '2026-03-01' AND DATE '2026-06-30') AS post_count,
+    COUNT_IF(TO_DATE(open_date) BETWEEN DATE '2025-03-01' AND DATE '2025-06-30') AS baseline_count
   FROM requisitions
   WHERE org_unit_id IN ('ORG001', 'ORG002')
     AND requisition_type = 'Backfill'
-    AND TO_DATE(open_date) BETWEEN DATE '2026-03-01' AND DATE '2026-06-30'
-),
-baseline_backfills AS (
-  SELECT COUNT(*) AS requisition_count
-  FROM requisitions
-  WHERE org_unit_id IN ('ORG001', 'ORG002')
-    AND requisition_type = 'Backfill'
-    AND TO_DATE(open_date) BETWEEN DATE '2025-03-01' AND DATE '2025-06-30'
 ),
 linked_backfills AS (
   SELECT COUNT(DISTINCT r.requisition_id) AS requisition_count
@@ -282,11 +255,10 @@ linked_backfills AS (
 ),
 backfill_pattern AS (
   SELECT
-    p.requisition_count AS post_count,
-    b.requisition_count AS baseline_count,
-    l.requisition_count / NULLIF(p.requisition_count, 0) AS linked_share
-  FROM post_spike_backfills p
-  CROSS JOIN baseline_backfills b
+    b.post_count,
+    b.baseline_count,
+    l.requisition_count / NULLIF(b.post_count, 0) AS linked_share
+  FROM backfill_counts b
   CROSS JOIN linked_backfills l
 )
 SELECT
@@ -331,7 +303,8 @@ SELECT
     '; engagement_late=', ROUND(late_score, 2),
     '; burnout_comment_share=', ROUND(burnout_comment_share, 3)
   )
-FROM fraud_burnout
+FROM fraud_engagement
+CROSS JOIN fraud_productivity
 UNION ALL
 SELECT
   '04_standout_managers',

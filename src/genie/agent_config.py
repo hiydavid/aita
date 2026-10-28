@@ -6,6 +6,7 @@ from typing import Any
 
 GENIE_DIR = Path(__file__).resolve().parent
 ID_PATTERN = re.compile(r"^[0-9a-f]{32}$")
+EMPTY_SQL_ANSWER = [{"format": "SQL", "content": []}]
 BENCHMARK_PATTERN = re.compile(
     r"^-- benchmark: ([0-9a-f]{32})\n(.*?)(?=^-- benchmark: |\Z)",
     re.MULTILINE | re.DOTALL,
@@ -103,10 +104,14 @@ def validate_agent(agent: dict[str, Any]) -> dict[str, Any]:
     if set(sample_ids) & set(benchmark_ids):
         raise ValueError(f"{agent['key']} reuses a question id")
     for benchmark in benchmarks:
-        if benchmark.get("answer") != [{"format": "SQL", "content": []}]:
+        answer = benchmark.pop("answer", EMPTY_SQL_ANSWER)
+        evaluation_note = benchmark.pop("evaluation_note", None)
+        if answer != EMPTY_SQL_ANSWER:
             raise ValueError(f"{agent['key']} Agent-mode benchmarks must use empty SQL answers")
-        if not benchmark.get("evaluation_note"):
+        if not evaluation_note:
             raise ValueError(f"{agent['key']} Agent-mode benchmark lacks evaluation criteria")
+        benchmark["answer"] = answer
+        benchmark["evaluation_note"] = evaluation_note
     instructions = config.get("instructions", {})
     instruction_ids: list[str] = []
     for key in ("example_question_sqls", "text_instructions", "join_specs"):

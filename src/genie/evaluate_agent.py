@@ -6,17 +6,13 @@ from typing import Any
 from databricks.sdk import WorkspaceClient
 from openai import OpenAI
 
+from agent_config import load_agents, validate_agent
 
-GENIE_DIR = Path(__file__).resolve().parent
 
 
 def load_benchmarks(agent_key: str) -> list[dict[str, Any]]:
-    manifest = json.loads((GENIE_DIR / "agents.json").read_text())
-    matches = [agent for agent in manifest["agents"] if agent["key"] == agent_key]
-    if not matches:
-        raise ValueError(f"Unknown agent key: {agent_key}")
-    config = json.loads((GENIE_DIR / matches[0]["config"]).read_text())
-    return config["benchmarks"]["questions"]
+    agent = load_agents(agent_key)[0]
+    return validate_agent(agent)["benchmarks"]["questions"]
 
 
 def extract_sql(item: Any) -> str | None:

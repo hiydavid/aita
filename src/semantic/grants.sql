@@ -1,22 +1,16 @@
 BEGIN
-  EXECUTE IMMEDIATE CONCAT(
-    'GRANT USE CATALOG ON CATALOG `', :catalog, '` TO `aita_users`'
-  );
-  EXECUTE IMMEDIATE CONCAT(
-    'GRANT USE CATALOG ON CATALOG `', :catalog, '` TO `aita_hr_admin`'
-  );
-  EXECUTE IMMEDIATE CONCAT(
-    'GRANT USE SCHEMA ON SCHEMA `', :catalog, '`.`', :gold_schema,
-    '` TO `aita_users`'
-  );
-  EXECUTE IMMEDIATE CONCAT(
-    'GRANT USE SCHEMA ON SCHEMA `', :catalog, '`.`', :gold_schema,
-    '` TO `aita_hr_admin`'
-  );
   FOR principal AS
     SELECT principal_name
     FROM VALUES ('aita_users'), ('aita_hr_admin') AS principals(principal_name)
   DO
+    EXECUTE IMMEDIATE CONCAT(
+      'GRANT USE CATALOG ON CATALOG `', :catalog, '` TO `',
+      principal.principal_name, '`'
+    );
+    EXECUTE IMMEDIATE CONCAT(
+      'GRANT USE SCHEMA ON SCHEMA `', :catalog, '`.`', :gold_schema,
+      '` TO `', principal.principal_name, '`'
+    );
     FOR object AS
       SELECT object_name
       FROM VALUES

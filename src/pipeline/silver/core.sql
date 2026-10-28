@@ -15,15 +15,7 @@ SELECT
   upper(trim(job_code)) AS job_code,
   upper(trim(org_unit_id)) AS org_unit_id,
   upper(trim(manager_id)) AS manager_id,
-  CASE lower(trim(business_line))
-    WHEN 'consumer banking' THEN 'Consumer Banking'
-    WHEN 'wealth management' THEN 'Wealth Management'
-    WHEN 'commercial banking' THEN 'Commercial Banking'
-    WHEN 'operations' THEN 'Operations'
-    WHEN 'technology' THEN 'Technology'
-    WHEN 'corporate functions' THEN 'Corporate Functions'
-    ELSE trim(business_line)
-  END AS business_line,
+  initcap(lower(trim(business_line))) AS business_line,
   initcap(lower(trim(location))) AS location,
   initcap(lower(trim(worker_type))) AS worker_type,
   lower(trim(email)) AS email,
@@ -94,15 +86,7 @@ AS
 SELECT
   upper(trim(org_unit_id)) AS org_unit_id,
   trim(org_unit_name) AS org_unit_name,
-  CASE lower(trim(business_line))
-    WHEN 'consumer banking' THEN 'Consumer Banking'
-    WHEN 'wealth management' THEN 'Wealth Management'
-    WHEN 'commercial banking' THEN 'Commercial Banking'
-    WHEN 'operations' THEN 'Operations'
-    WHEN 'technology' THEN 'Technology'
-    WHEN 'corporate functions' THEN 'Corporate Functions'
-    ELSE trim(business_line)
-  END AS business_line,
+  initcap(lower(trim(business_line))) AS business_line,
   trim(org_type) AS org_type,
   initcap(lower(trim(region))) AS region,
   initcap(lower(trim(location))) AS location,

@@ -7,15 +7,7 @@ SELECT
   upper(trim(requisition_id)) AS requisition_id,
   upper(trim(job_code)) AS job_code,
   upper(trim(org_unit_id)) AS org_unit_id,
-  CASE lower(trim(business_line))
-    WHEN 'consumer banking' THEN 'Consumer Banking'
-    WHEN 'wealth management' THEN 'Wealth Management'
-    WHEN 'commercial banking' THEN 'Commercial Banking'
-    WHEN 'operations' THEN 'Operations'
-    WHEN 'technology' THEN 'Technology'
-    WHEN 'corporate functions' THEN 'Corporate Functions'
-    ELSE trim(business_line)
-  END AS business_line,
+  initcap(lower(trim(business_line))) AS business_line,
   CAST(open_date AS DATE) AS open_date,
   CAST(close_date AS DATE) AS close_date,
   initcap(lower(trim(status))) AS status,

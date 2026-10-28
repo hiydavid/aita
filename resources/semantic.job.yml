@@ -7,86 +7,58 @@ resources:
       tasks:
         - task_key: publish_workforce
           sql_task:
-            warehouse_id: ${var.warehouse_id}
+            warehouse_id: &semantic_warehouse_id ${var.warehouse_id}
             file:
               path: ../src/semantic/mv_workforce.sql
-            parameters:
+            parameters: &semantic_parameters
               catalog: ${var.catalog}
               gold_schema: ${var.gold_schema}
 
         - task_key: publish_attrition
-          depends_on:
-            - task_key: publish_workforce
           sql_task:
-            warehouse_id: ${var.warehouse_id}
+            warehouse_id: *semantic_warehouse_id
             file:
               path: ../src/semantic/mv_attrition.sql
-            parameters:
-              catalog: ${var.catalog}
-              gold_schema: ${var.gold_schema}
+            parameters: *semantic_parameters
 
         - task_key: publish_engagement
-          depends_on:
-            - task_key: publish_attrition
           sql_task:
-            warehouse_id: ${var.warehouse_id}
+            warehouse_id: *semantic_warehouse_id
             file:
               path: ../src/semantic/mv_engagement.sql
-            parameters:
-              catalog: ${var.catalog}
-              gold_schema: ${var.gold_schema}
+            parameters: *semantic_parameters
 
         - task_key: publish_productivity
-          depends_on:
-            - task_key: publish_engagement
           sql_task:
-            warehouse_id: ${var.warehouse_id}
+            warehouse_id: *semantic_warehouse_id
             file:
               path: ../src/semantic/mv_productivity.sql
-            parameters:
-              catalog: ${var.catalog}
-              gold_schema: ${var.gold_schema}
+            parameters: *semantic_parameters
 
         - task_key: publish_talent
-          depends_on:
-            - task_key: publish_productivity
           sql_task:
-            warehouse_id: ${var.warehouse_id}
+            warehouse_id: *semantic_warehouse_id
             file:
               path: ../src/semantic/mv_talent.sql
-            parameters:
-              catalog: ${var.catalog}
-              gold_schema: ${var.gold_schema}
+            parameters: *semantic_parameters
 
         - task_key: publish_talent_skills
-          depends_on:
-            - task_key: publish_talent
           sql_task:
-            warehouse_id: ${var.warehouse_id}
+            warehouse_id: *semantic_warehouse_id
             file:
               path: ../src/semantic/mv_talent_skills.sql
-            parameters:
-              catalog: ${var.catalog}
-              gold_schema: ${var.gold_schema}
+            parameters: *semantic_parameters
 
         - task_key: publish_requisitions
-          depends_on:
-            - task_key: publish_talent_skills
           sql_task:
-            warehouse_id: ${var.warehouse_id}
+            warehouse_id: *semantic_warehouse_id
             file:
               path: ../src/semantic/mv_requisitions.sql
-            parameters:
-              catalog: ${var.catalog}
-              gold_schema: ${var.gold_schema}
+            parameters: *semantic_parameters
 
         - task_key: publish_recruiting_funnel
-          depends_on:
-            - task_key: publish_requisitions
           sql_task:
-            warehouse_id: ${var.warehouse_id}
+            warehouse_id: *semantic_warehouse_id
             file:
               path: ../src/semantic/mv_recruiting_funnel.sql
-            parameters:
-              catalog: ${var.catalog}
-              gold_schema: ${var.gold_schema}
+            parameters: *semantic_parameters

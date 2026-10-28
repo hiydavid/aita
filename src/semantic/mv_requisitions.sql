@@ -1,163 +1,169 @@
 EXECUTE IMMEDIATE CONCAT(
   'CREATE OR REPLACE VIEW `', :catalog, '`.`', :gold_schema,
   '`.`mv_requisitions` WITH METRICS LANGUAGE YAML AS $$\n',
-  'version: 1.1\n',
-  'source: ', :catalog, '.', :gold_schema, '.fact_requisition\n',
-  'comment: "Requisition volume, status, time-to-fill, backfill, and estimated recruiting-cost metrics."\n',
-  'joins:\n',
-  '  - name: dim_org\n',
-  '    source: ', :catalog, '.', :gold_schema, '.dim_org\n',
-  '    "on": source.org_unit_id = dim_org.org_unit_id\n',
-  '  - name: dim_job\n',
-  '    source: ', :catalog, '.', :gold_schema, '.dim_job\n',
-  '    "on": source.job_code = dim_job.job_code\n',
-  'dimensions:\n',
-  '  - name: open_date\n',
-  '    expr: source.open_date\n',
-  '    comment: "Date the requisition opened."\n',
-  '    display_name: "Open Date"\n',
-  '    synonyms: [requisition_open_date]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: month\n',
-  '    expr: "DATE_TRUNC(\'MONTH\', source.open_date)"\n',
-  '    comment: "First date of the requisition-open month."\n',
-  '    display_name: "Month"\n',
-  '    synonyms: [open_month]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: quarter\n',
-  '    expr: "DATE_TRUNC(\'QUARTER\', source.open_date)"\n',
-  '    comment: "First date of the requisition-open quarter."\n',
-  '    display_name: "Quarter"\n',
-  '    synonyms: [open_quarter]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: year\n',
-  '    expr: YEAR(source.open_date)\n',
-  '    comment: "Calendar year the requisition opened."\n',
-  '    display_name: "Year"\n',
-  '    synonyms: [open_year]\n',
-  '  - name: close_date\n',
-  '    expr: source.close_date\n',
-  '    comment: "Date the requisition closed; null while open."\n',
-  '    display_name: "Close Date"\n',
-  '    synonyms: [requisition_close_date]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: requisition_type\n',
-  '    expr: source.requisition_type\n',
-  '    comment: "Backfill or new-position hiring demand type."\n',
-  '    display_name: "Requisition Type"\n',
-  '    synonyms: [req_type]\n',
-  '  - name: status\n',
-  '    expr: source.status\n',
-  '    comment: "Current requisition status."\n',
-  '    display_name: "Requisition Status"\n',
-  '    synonyms: [req_status]\n',
-  '  - name: org_unit_id\n',
-  '    expr: source.org_unit_id\n',
-  '    comment: "Hiring organization-unit identifier."\n',
-  '    display_name: "Organization Unit ID"\n',
-  '    synonyms: [team_id]\n',
-  '  - name: org_unit_name\n',
-  '    expr: dim_org.org_unit_name\n',
-  '    comment: "Hiring organization-unit name."\n',
-  '    display_name: "Organization Unit"\n',
-  '    synonyms: [team, branch, contact_center]\n',
-  '  - name: org_type\n',
-  '    expr: dim_org.org_type\n',
-  '    comment: "Hiring organization hierarchy type."\n',
-  '    display_name: "Organization Type"\n',
-  '    synonyms: [unit_type]\n',
-  '  - name: business_line\n',
-  '    expr: dim_org.business_line\n',
-  '    comment: "Hiring top-level bank business line."\n',
-  '    display_name: "Business Line"\n',
-  '    synonyms: [division]\n',
-  '  - name: region\n',
-  '    expr: dim_org.region\n',
-  '    comment: "Geographic region of the hiring unit."\n',
-  '    display_name: "Region"\n',
-  '    synonyms: [geography]\n',
-  '  - name: location\n',
-  '    expr: dim_org.location\n',
-  '    comment: "Primary location of the hiring unit."\n',
-  '    display_name: "Location"\n',
-  '    synonyms: [site]\n',
-  '  - name: job_code\n',
-  '    expr: source.job_code\n',
-  '    comment: "Requested stable job-code identifier."\n',
-  '    display_name: "Job Code"\n',
-  '    synonyms: [role_code]\n',
-  '  - name: job_title\n',
-  '    expr: dim_job.job_title\n',
-  '    comment: "Requested business-friendly job title."\n',
-  '    display_name: "Job Title"\n',
-  '    synonyms: [role_title]\n',
-  '  - name: job_family\n',
-  '    expr: dim_job.job_family\n',
-  '    comment: "Requested job family."\n',
-  '    display_name: "Job Family"\n',
-  '    synonyms: [role_family]\n',
-  '  - name: job_level\n',
-  '    expr: dim_job.job_level\n',
-  '    comment: "Requested career level."\n',
-  '    display_name: "Job Level"\n',
-  '    synonyms: [career_level]\n',
-  '  - name: licensed_role_flag\n',
-  '    expr: source.licensed_role_flag\n',
-  '    comment: "Whether the requested role requires a license."\n',
-  '    display_name: "Licensed Role"\n',
-  '    synonyms: [licensed_job]\n',
-  '  - name: strategic_role_flag\n',
-  '    expr: dim_job.strategic_role_flag\n',
-  '    comment: "Whether the requested role is strategic."\n',
-  '    display_name: "Strategic Role"\n',
-  '    synonyms: [critical_role]\n',
-  '  - name: genai_exposure_tier\n',
-  '    expr: dim_job.genai_exposure_tier\n',
-  '    comment: "AI-classified GenAI exposure tier of the requested role."\n',
-  '    display_name: "GenAI Exposure Tier"\n',
-  '    synonyms: [ai_exposure]\n',
-  'measures:\n',
-  '  - name: requisitions\n',
-  '    expr: COUNT(1)\n',
-  '    comment: "Requisitions in the selected population."\n',
-  '    display_name: "Requisitions"\n',
-  '    synonyms: [reqs]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '  - name: open_requisitions\n',
-  '    expr: COUNT(1) FILTER (WHERE source.status = \'Open\')\n',
-  '    comment: "Requisitions whose current status is Open."\n',
-  '    display_name: "Open Requisitions"\n',
-  '    synonyms: [open_reqs]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '  - name: filled_requisitions\n',
-  '    expr: COUNT(1) FILTER (WHERE source.filled_flag)\n',
-  '    comment: "Requisitions whose current status is Filled."\n',
-  '    display_name: "Filled Requisitions"\n',
-  '    synonyms: [filled_reqs]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '  - name: average_time_to_fill\n',
-  '    expr: AVG(source.time_to_fill_days) FILTER (WHERE source.filled_flag)\n',
-  '    comment: "Average calendar days to fill for filled requisitions only."\n',
-  '    display_name: "Average Time to Fill"\n',
-  '    synonyms: [average_ttf]\n',
-  '    format: {type: number, decimal_places: {type: max, places: 2}}\n',
-  '  - name: backfill_requisitions\n',
-  '    expr: COUNT(1) FILTER (WHERE source.backfill_flag)\n',
-  '    comment: "Requisitions opened to replace departing employees."\n',
-  '    display_name: "Backfill Requisitions"\n',
-  '    synonyms: [backfill_reqs]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '  - name: backfill_share\n',
-  '    expr: "MEASURE(backfill_requisitions) / NULLIF(MEASURE(requisitions), 0)"\n',
-  '    comment: "Backfill requisitions divided by all requisitions."\n',
-  '    display_name: "Backfill Share"\n',
-  '    synonyms: [backfill_rate]\n',
-  '    format: {type: percentage, decimal_places: {type: max, places: 2}}\n',
-  '  - name: estimated_recruiting_cost\n',
-  '    expr: SUM(source.estimated_recruiting_cost)\n',
-  '    comment: "Estimated recruiting cost in US dollars."\n',
-  '    display_name: "Estimated Recruiting Cost"\n',
-  '    synonyms: [hiring_cost]\n',
-  '    format: {type: currency, currency_code: USD, decimal_places: {type: max, places: 2}}\n',
-  '$$'
+  REPLACE(
+    REPLACE(
+      'version: 1.1
+source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.fact_requisition
+comment: "Requisition volume, status, time-to-fill, backfill, and estimated recruiting-cost metrics."
+joins:
+  - name: dim_org
+    source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_org
+    "on": source.org_unit_id = dim_org.org_unit_id
+  - name: dim_job
+    source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_job
+    "on": source.job_code = dim_job.job_code
+dimensions:
+  - name: open_date
+    expr: source.open_date
+    comment: "Date the requisition opened."
+    display_name: "Open Date"
+    synonyms: [requisition_open_date]
+    format: {type: date, date_format: year_month_day}
+  - name: month
+    expr: "DATE_TRUNC(\'MONTH\', source.open_date)"
+    comment: "First date of the requisition-open month."
+    display_name: "Month"
+    synonyms: [open_month]
+    format: {type: date, date_format: year_month_day}
+  - name: quarter
+    expr: "DATE_TRUNC(\'QUARTER\', source.open_date)"
+    comment: "First date of the requisition-open quarter."
+    display_name: "Quarter"
+    synonyms: [open_quarter]
+    format: {type: date, date_format: year_month_day}
+  - name: year
+    expr: YEAR(source.open_date)
+    comment: "Calendar year the requisition opened."
+    display_name: "Year"
+    synonyms: [open_year]
+  - name: close_date
+    expr: source.close_date
+    comment: "Date the requisition closed; null while open."
+    display_name: "Close Date"
+    synonyms: [requisition_close_date]
+    format: {type: date, date_format: year_month_day}
+  - name: requisition_type
+    expr: source.requisition_type
+    comment: "Backfill or new-position hiring demand type."
+    display_name: "Requisition Type"
+    synonyms: [req_type]
+  - name: status
+    expr: source.status
+    comment: "Current requisition status."
+    display_name: "Requisition Status"
+    synonyms: [req_status]
+  - name: org_unit_id
+    expr: source.org_unit_id
+    comment: "Hiring organization-unit identifier."
+    display_name: "Organization Unit ID"
+    synonyms: [team_id]
+  - name: org_unit_name
+    expr: dim_org.org_unit_name
+    comment: "Hiring organization-unit name."
+    display_name: "Organization Unit"
+    synonyms: [team, branch, contact_center]
+  - name: org_type
+    expr: dim_org.org_type
+    comment: "Hiring organization hierarchy type."
+    display_name: "Organization Type"
+    synonyms: [unit_type]
+  - name: business_line
+    expr: dim_org.business_line
+    comment: "Hiring top-level bank business line."
+    display_name: "Business Line"
+    synonyms: [division]
+  - name: region
+    expr: dim_org.region
+    comment: "Geographic region of the hiring unit."
+    display_name: "Region"
+    synonyms: [geography]
+  - name: location
+    expr: dim_org.location
+    comment: "Primary location of the hiring unit."
+    display_name: "Location"
+    synonyms: [site]
+  - name: job_code
+    expr: source.job_code
+    comment: "Requested stable job-code identifier."
+    display_name: "Job Code"
+    synonyms: [role_code]
+  - name: job_title
+    expr: dim_job.job_title
+    comment: "Requested business-friendly job title."
+    display_name: "Job Title"
+    synonyms: [role_title]
+  - name: job_family
+    expr: dim_job.job_family
+    comment: "Requested job family."
+    display_name: "Job Family"
+    synonyms: [role_family]
+  - name: job_level
+    expr: dim_job.job_level
+    comment: "Requested career level."
+    display_name: "Job Level"
+    synonyms: [career_level]
+  - name: licensed_role_flag
+    expr: source.licensed_role_flag
+    comment: "Whether the requested role requires a license."
+    display_name: "Licensed Role"
+    synonyms: [licensed_job]
+  - name: strategic_role_flag
+    expr: dim_job.strategic_role_flag
+    comment: "Whether the requested role is strategic."
+    display_name: "Strategic Role"
+    synonyms: [critical_role]
+  - name: genai_exposure_tier
+    expr: dim_job.genai_exposure_tier
+    comment: "AI-classified GenAI exposure tier of the requested role."
+    display_name: "GenAI Exposure Tier"
+    synonyms: [ai_exposure]
+measures:
+  - name: requisitions
+    expr: COUNT(1)
+    comment: "Requisitions in the selected population."
+    display_name: "Requisitions"
+    synonyms: [reqs]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+  - name: open_requisitions
+    expr: COUNT(1) FILTER (WHERE source.status = \'Open\')
+    comment: "Requisitions whose current status is Open."
+    display_name: "Open Requisitions"
+    synonyms: [open_reqs]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+  - name: filled_requisitions
+    expr: COUNT(1) FILTER (WHERE source.filled_flag)
+    comment: "Requisitions whose current status is Filled."
+    display_name: "Filled Requisitions"
+    synonyms: [filled_reqs]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+  - name: average_time_to_fill
+    expr: AVG(source.time_to_fill_days) FILTER (WHERE source.filled_flag)
+    comment: "Average calendar days to fill for filled requisitions only."
+    display_name: "Average Time to Fill"
+    synonyms: [average_ttf]
+    format: {type: number, decimal_places: {type: max, places: 2}}
+  - name: backfill_requisitions
+    expr: COUNT(1) FILTER (WHERE source.backfill_flag)
+    comment: "Requisitions opened to replace departing employees."
+    display_name: "Backfill Requisitions"
+    synonyms: [backfill_reqs]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+  - name: backfill_share
+    expr: "MEASURE(backfill_requisitions) / NULLIF(MEASURE(requisitions), 0)"
+    comment: "Backfill requisitions divided by all requisitions."
+    display_name: "Backfill Share"
+    synonyms: [backfill_rate]
+    format: {type: percentage, decimal_places: {type: max, places: 2}}
+  - name: estimated_recruiting_cost
+    expr: SUM(source.estimated_recruiting_cost)
+    comment: "Estimated recruiting cost in US dollars."
+    display_name: "Estimated Recruiting Cost"
+    synonyms: [hiring_cost]
+    format: {type: currency, currency_code: USD, decimal_places: {type: max, places: 2}}
+$$',
+      '__AITA_CATALOG__', :catalog
+    ),
+    '__AITA_GOLD_SCHEMA__', :gold_schema
+  )
 );

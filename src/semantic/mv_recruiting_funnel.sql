@@ -1,64 +1,70 @@
 EXECUTE IMMEDIATE CONCAT(
   'CREATE OR REPLACE VIEW `', :catalog, '`.`', :gold_schema,
   '`.`mv_recruiting_funnel` WITH METRICS LANGUAGE YAML AS $$\n',
-  'version: 1.1\n',
-  'source: ', :catalog, '.', :gold_schema, '.fact_application_funnel\n',
-  'comment: "Recruiting funnel."\n',
-  'joins:\n',
-  '  - name: dim_requisition\n',
-  '    source: ', :catalog, '.', :gold_schema, '.fact_requisition\n',
-  '    "on": source.requisition_id = dim_requisition.requisition_id\n',
-  '    joins:\n',
-  '      - name: dim_org\n',
-  '        source: ', :catalog, '.', :gold_schema, '.dim_org\n',
-  '        "on": dim_requisition.org_unit_id = dim_org.org_unit_id\n',
-  '      - name: dim_requested_job\n',
-  '        source: ', :catalog, '.', :gold_schema, '.dim_job\n',
-  '        "on": dim_requisition.job_code = dim_requested_job.job_code\n',
-  '  - name: dim_internal_job\n',
-  '    source: ', :catalog, '.', :gold_schema, '.dim_job\n',
-  '    "on": source.internal_applicant_job_code = dim_internal_job.job_code\n',
-  'dimensions:\n',
-  '  - {name: month, expr: "DATE_TRUNC(\'MONTH\', source.application_date)", comment: "Application month.", display_name: "Month", synonyms: [application_month]}\n',
-  '  - {name: quarter, expr: "DATE_TRUNC(\'QUARTER\', source.application_date)", comment: "Application quarter.", display_name: "Quarter", synonyms: [application_quarter]}\n',
-  '  - {name: year, expr: YEAR(source.application_date), comment: "Application year.", display_name: "Year", synonyms: [application_year]}\n',
-  '  - {name: recruiting_source, expr: source.recruiting_source, comment: "Recruiting source.", display_name: "Recruiting Source", synonyms: [source, candidate_source]}\n',
-  '  - {name: current_stage, expr: source.current_stage, comment: "Latest application stage.", display_name: "Current Stage", synonyms: [latest_stage]}\n',
-  '  - {name: decline_reason, expr: source.decline_reason, comment: "AI-classified decline reason.", display_name: "AI Decline Reason", synonyms: [decline_category]}\n',
-  '  - {name: internal_candidate_flag, expr: source.internal_candidate_flag, comment: "Internal candidate flag.", display_name: "Internal Candidate", synonyms: [internal_applicant]}\n',
-  '  - {name: requisition_type, expr: dim_requisition.requisition_type, comment: "Demand type.", display_name: "Requisition Type", synonyms: [req_type]}\n',
-  '  - {name: status, expr: dim_requisition.status, comment: "Requisition status.", display_name: "Requisition Status", synonyms: [req_status]}\n',
-  '  - {name: org_unit_id, expr: dim_requisition.org_unit_id, comment: "Hiring unit ID.", display_name: "Organization Unit ID", synonyms: [team_id]}\n',
-  '  - {name: org_unit_name, expr: dim_requisition.dim_org.org_unit_name, comment: "Hiring unit name.", display_name: "Organization Unit", synonyms: [team, branch, contact_center]}\n',
-  '  - {name: org_type, expr: dim_requisition.dim_org.org_type, comment: "Hiring unit type.", display_name: "Organization Type", synonyms: [unit_type]}\n',
-  '  - {name: business_line, expr: dim_requisition.dim_org.business_line, comment: "Hiring business line.", display_name: "Business Line", synonyms: [division]}\n',
-  '  - {name: region, expr: dim_requisition.dim_org.region, comment: "Hiring region.", display_name: "Region", synonyms: [geography]}\n',
-  '  - {name: location, expr: dim_requisition.dim_org.location, comment: "Hiring location.", display_name: "Location", synonyms: [site]}\n',
-  '  - {name: job_family, expr: dim_requisition.dim_requested_job.job_family, comment: "Requested job family.", display_name: "Requested Job Family", synonyms: [req_family]}\n',
-  '  - {name: job_level, expr: dim_requisition.dim_requested_job.job_level, comment: "Requested job level.", display_name: "Requested Job Level", synonyms: [req_level]}\n',
-  '  - {name: licensed_role_flag, expr: dim_requisition.licensed_role_flag, comment: "Requested license flag.", display_name: "Requested Licensed Role", synonyms: [licensed_job]}\n',
-  '  - {name: strategic_role_flag, expr: dim_requisition.dim_requested_job.strategic_role_flag, comment: "Requested strategy flag.", display_name: "Requested Strategic Role", synonyms: [critical_role]}\n',
-  '  - {name: genai_exposure_tier, expr: dim_requisition.dim_requested_job.genai_exposure_tier, comment: "AI-classified requested exposure.", display_name: "Requested GenAI Tier", synonyms: [req_ai_tier]}\n',
-  '  - {name: internal_job_family, expr: dim_internal_job.job_family, comment: "Internal family at application.", display_name: "Internal Job Family", synonyms: [origin_job_family]}\n',
-  '  - {name: internal_job_level, expr: dim_internal_job.job_level, comment: "Internal level at application.", display_name: "Internal Job Level", synonyms: [origin_job_level]}\n',
-  '  - {name: internal_licensed_role_flag, expr: dim_internal_job.licensed_role_flag, comment: "Internal license flag.", display_name: "Internal Licensed", synonyms: [origin_license]}\n',
-  '  - {name: internal_strategic_role_flag, expr: dim_internal_job.strategic_role_flag, comment: "Internal strategy flag.", display_name: "Internal Strategic", synonyms: [origin_strategy]}\n',
-  '  - {name: internal_genai_exposure_tier, expr: dim_internal_job.genai_exposure_tier, comment: "AI-classified internal exposure.", display_name: "Internal GenAI Tier", synonyms: [origin_ai_tier]}\n',
-  'measures:\n',
-  '  - {name: applications, expr: COUNT(1), comment: "Applications.", display_name: "Applications", synonyms: [applicants]}\n',
-  '  - {name: internal_applications, expr: COUNT(1) FILTER (WHERE source.internal_candidate_flag), comment: "Internal apps.", display_name: "Internal Applications", synonyms: [internal_applicants]}\n',
-  '  - {name: internal_applicant_share, expr: "MEASURE(internal_applications) / NULLIF(MEASURE(applications), 0)", comment: "Internal share of applications.", display_name: "Internal Applicant Share", synonyms: [internal_share], format: {type: percentage, decimal_places: {type: max, places: 2}}}\n',
-  '  - {name: screened_applications, expr: COUNT(1) FILTER (WHERE source.reached_screen_flag), comment: "Applications reaching Screen.", display_name: "Screened Applications", synonyms: [screen_reached]}\n',
-  '  - {name: interviewed_applications, expr: COUNT(1) FILTER (WHERE source.reached_interview_flag), comment: "Applications reaching Interview.", display_name: "Interviewed Applications", synonyms: [interview_reached]}\n',
-  '  - {name: offers_extended, expr: COUNT(1) FILTER (WHERE source.reached_offer_flag), comment: "Applications reaching Offer.", display_name: "Offers Extended", synonyms: [offer_applications]}\n',
-  '  - {name: accepted_offers, expr: COUNT(1) FILTER (WHERE source.offer_outcome = \'Accepted\'), comment: "Accepted offers.", display_name: "Accepted Offers", synonyms: [offer_acceptances]}\n',
-  '  - {name: declined_offers, expr: COUNT(1) FILTER (WHERE source.declined_offer_flag), comment: "Declined offer outcomes.", display_name: "Declined Offers", synonyms: [offer_declines]}\n',
-  '  - {name: hired_applications, expr: COUNT(1) FILTER (WHERE source.hired_flag), comment: "Applications reaching Hired.", display_name: "Hired Applications", synonyms: [hires_from_applications]}\n',
-  '  - {name: offer_acceptance_rate, expr: "MEASURE(accepted_offers) / NULLIF(MEASURE(offers_extended), 0)", comment: "Accepted share of offers.", display_name: "Offer Acceptance Rate", synonyms: [acceptance_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}\n',
-  '  - {name: offer_decline_rate, expr: "MEASURE(declined_offers) / NULLIF(MEASURE(offers_extended), 0)", comment: "Declined share of offers.", display_name: "Offer Decline Rate", synonyms: [decline_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}\n',
-  '  - {name: applied_to_screen_conversion_rate, expr: "MEASURE(screened_applications) / NULLIF(MEASURE(applications), 0)", comment: "Screened share of applications.", display_name: "Applied-to-Screen Rate", synonyms: [screen_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}\n',
-  '  - {name: screen_to_interview_conversion_rate, expr: "MEASURE(interviewed_applications) / NULLIF(MEASURE(screened_applications), 0)", comment: "Interviewed share of screened.", display_name: "Screen-to-Interview Rate", synonyms: [interview_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}\n',
-  '  - {name: interview_to_offer_conversion_rate, expr: "MEASURE(offers_extended) / NULLIF(MEASURE(interviewed_applications), 0)", comment: "Offer share of interviewed.", display_name: "Interview-to-Offer Rate", synonyms: [offer_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}\n',
-  '  - {name: offer_to_hire_conversion_rate, expr: "MEASURE(hired_applications) / NULLIF(MEASURE(offers_extended), 0)", comment: "Hire share of offers.", display_name: "Offer-to-Hire Rate", synonyms: [hire_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}\n',
-  '$$'
+  REPLACE(
+    REPLACE(
+      'version: 1.1
+source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.fact_application_funnel
+comment: "Recruiting funnel."
+joins:
+  - name: dim_requisition
+    source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.fact_requisition
+    "on": source.requisition_id = dim_requisition.requisition_id
+    joins:
+      - name: dim_org
+        source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_org
+        "on": dim_requisition.org_unit_id = dim_org.org_unit_id
+      - name: dim_requested_job
+        source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_job
+        "on": dim_requisition.job_code = dim_requested_job.job_code
+  - name: dim_internal_job
+    source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_job
+    "on": source.internal_applicant_job_code = dim_internal_job.job_code
+dimensions:
+  - {name: month, expr: "DATE_TRUNC(\'MONTH\', source.application_date)", comment: "Application month.", display_name: "Month", synonyms: [application_month]}
+  - {name: quarter, expr: "DATE_TRUNC(\'QUARTER\', source.application_date)", comment: "Application quarter.", display_name: "Quarter", synonyms: [application_quarter]}
+  - {name: year, expr: YEAR(source.application_date), comment: "Application year.", display_name: "Year", synonyms: [application_year]}
+  - {name: recruiting_source, expr: source.recruiting_source, comment: "Recruiting source.", display_name: "Recruiting Source", synonyms: [source, candidate_source]}
+  - {name: current_stage, expr: source.current_stage, comment: "Latest application stage.", display_name: "Current Stage", synonyms: [latest_stage]}
+  - {name: decline_reason, expr: source.decline_reason, comment: "AI-classified decline reason.", display_name: "AI Decline Reason", synonyms: [decline_category]}
+  - {name: internal_candidate_flag, expr: source.internal_candidate_flag, comment: "Internal candidate flag.", display_name: "Internal Candidate", synonyms: [internal_applicant]}
+  - {name: requisition_type, expr: dim_requisition.requisition_type, comment: "Demand type.", display_name: "Requisition Type", synonyms: [req_type]}
+  - {name: status, expr: dim_requisition.status, comment: "Requisition status.", display_name: "Requisition Status", synonyms: [req_status]}
+  - {name: org_unit_id, expr: dim_requisition.org_unit_id, comment: "Hiring unit ID.", display_name: "Organization Unit ID", synonyms: [team_id]}
+  - {name: org_unit_name, expr: dim_requisition.dim_org.org_unit_name, comment: "Hiring unit name.", display_name: "Organization Unit", synonyms: [team, branch, contact_center]}
+  - {name: org_type, expr: dim_requisition.dim_org.org_type, comment: "Hiring unit type.", display_name: "Organization Type", synonyms: [unit_type]}
+  - {name: business_line, expr: dim_requisition.dim_org.business_line, comment: "Hiring business line.", display_name: "Business Line", synonyms: [division]}
+  - {name: region, expr: dim_requisition.dim_org.region, comment: "Hiring region.", display_name: "Region", synonyms: [geography]}
+  - {name: location, expr: dim_requisition.dim_org.location, comment: "Hiring location.", display_name: "Location", synonyms: [site]}
+  - {name: job_family, expr: dim_requisition.dim_requested_job.job_family, comment: "Requested job family.", display_name: "Requested Job Family", synonyms: [req_family]}
+  - {name: job_level, expr: dim_requisition.dim_requested_job.job_level, comment: "Requested job level.", display_name: "Requested Job Level", synonyms: [req_level]}
+  - {name: licensed_role_flag, expr: dim_requisition.licensed_role_flag, comment: "Requested license flag.", display_name: "Requested Licensed Role", synonyms: [licensed_job]}
+  - {name: strategic_role_flag, expr: dim_requisition.dim_requested_job.strategic_role_flag, comment: "Requested strategy flag.", display_name: "Requested Strategic Role", synonyms: [critical_role]}
+  - {name: genai_exposure_tier, expr: dim_requisition.dim_requested_job.genai_exposure_tier, comment: "AI-classified requested exposure.", display_name: "Requested GenAI Tier", synonyms: [req_ai_tier]}
+  - {name: internal_job_family, expr: dim_internal_job.job_family, comment: "Internal family at application.", display_name: "Internal Job Family", synonyms: [origin_job_family]}
+  - {name: internal_job_level, expr: dim_internal_job.job_level, comment: "Internal level at application.", display_name: "Internal Job Level", synonyms: [origin_job_level]}
+  - {name: internal_licensed_role_flag, expr: dim_internal_job.licensed_role_flag, comment: "Internal license flag.", display_name: "Internal Licensed", synonyms: [origin_license]}
+  - {name: internal_strategic_role_flag, expr: dim_internal_job.strategic_role_flag, comment: "Internal strategy flag.", display_name: "Internal Strategic", synonyms: [origin_strategy]}
+  - {name: internal_genai_exposure_tier, expr: dim_internal_job.genai_exposure_tier, comment: "AI-classified internal exposure.", display_name: "Internal GenAI Tier", synonyms: [origin_ai_tier]}
+measures:
+  - {name: applications, expr: COUNT(1), comment: "Applications.", display_name: "Applications", synonyms: [applicants]}
+  - {name: internal_applications, expr: COUNT(1) FILTER (WHERE source.internal_candidate_flag), comment: "Internal apps.", display_name: "Internal Applications", synonyms: [internal_applicants]}
+  - {name: internal_applicant_share, expr: "MEASURE(internal_applications) / NULLIF(MEASURE(applications), 0)", comment: "Internal share of applications.", display_name: "Internal Applicant Share", synonyms: [internal_share], format: {type: percentage, decimal_places: {type: max, places: 2}}}
+  - {name: screened_applications, expr: COUNT(1) FILTER (WHERE source.reached_screen_flag), comment: "Applications reaching Screen.", display_name: "Screened Applications", synonyms: [screen_reached]}
+  - {name: interviewed_applications, expr: COUNT(1) FILTER (WHERE source.reached_interview_flag), comment: "Applications reaching Interview.", display_name: "Interviewed Applications", synonyms: [interview_reached]}
+  - {name: offers_extended, expr: COUNT(1) FILTER (WHERE source.reached_offer_flag), comment: "Applications reaching Offer.", display_name: "Offers Extended", synonyms: [offer_applications]}
+  - {name: accepted_offers, expr: COUNT(1) FILTER (WHERE source.offer_outcome = \'Accepted\'), comment: "Accepted offers.", display_name: "Accepted Offers", synonyms: [offer_acceptances]}
+  - {name: declined_offers, expr: COUNT(1) FILTER (WHERE source.declined_offer_flag), comment: "Declined offer outcomes.", display_name: "Declined Offers", synonyms: [offer_declines]}
+  - {name: hired_applications, expr: COUNT(1) FILTER (WHERE source.hired_flag), comment: "Applications reaching Hired.", display_name: "Hired Applications", synonyms: [hires_from_applications]}
+  - {name: offer_acceptance_rate, expr: "MEASURE(accepted_offers) / NULLIF(MEASURE(offers_extended), 0)", comment: "Accepted share of offers.", display_name: "Offer Acceptance Rate", synonyms: [acceptance_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}
+  - {name: offer_decline_rate, expr: "MEASURE(declined_offers) / NULLIF(MEASURE(offers_extended), 0)", comment: "Declined share of offers.", display_name: "Offer Decline Rate", synonyms: [decline_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}
+  - {name: applied_to_screen_conversion_rate, expr: "MEASURE(screened_applications) / NULLIF(MEASURE(applications), 0)", comment: "Screened share of applications.", display_name: "Applied-to-Screen Rate", synonyms: [screen_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}
+  - {name: screen_to_interview_conversion_rate, expr: "MEASURE(interviewed_applications) / NULLIF(MEASURE(screened_applications), 0)", comment: "Interviewed share of screened.", display_name: "Screen-to-Interview Rate", synonyms: [interview_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}
+  - {name: interview_to_offer_conversion_rate, expr: "MEASURE(offers_extended) / NULLIF(MEASURE(interviewed_applications), 0)", comment: "Offer share of interviewed.", display_name: "Interview-to-Offer Rate", synonyms: [offer_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}
+  - {name: offer_to_hire_conversion_rate, expr: "MEASURE(hired_applications) / NULLIF(MEASURE(offers_extended), 0)", comment: "Hire share of offers.", display_name: "Offer-to-Hire Rate", synonyms: [hire_rate], format: {type: percentage, decimal_places: {type: max, places: 2}}}
+$$',
+      '__AITA_CATALOG__', :catalog
+    ),
+    '__AITA_GOLD_SCHEMA__', :gold_schema
+  )
 );

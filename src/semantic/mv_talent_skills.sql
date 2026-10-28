@@ -1,117 +1,123 @@
 EXECUTE IMMEDIATE CONCAT(
   'CREATE OR REPLACE VIEW `', :catalog, '`.`', :gold_schema,
   '`.`mv_talent_skills` WITH METRICS LANGUAGE YAML AS $$\n',
-  'version: 1.1\n',
-  'source: ', :catalog, '.', :gold_schema, '.semantic_talent_skills\n',
-  'comment: "Current active-employee counts by normalized AI-extracted demonstrated skill."\n',
-  'joins:\n',
-  '  - name: dim_org\n',
-  '    source: ', :catalog, '.', :gold_schema, '.dim_org\n',
-  '    "on": source.org_unit_id = dim_org.org_unit_id\n',
-  '  - name: dim_job\n',
-  '    source: ', :catalog, '.', :gold_schema, '.dim_job\n',
-  '    "on": source.job_code = dim_job.job_code\n',
-  'dimensions:\n',
-  '  - name: as_of_date\n',
-  '    expr: source.as_of_date\n',
-  '    comment: "Business date of the current talent snapshot."\n',
-  '    display_name: "As-of Date"\n',
-  '    synonyms: [snapshot_date]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: month\n',
-  '    expr: "DATE_TRUNC(\'MONTH\', source.as_of_date)"\n',
-  '    comment: "First date of the snapshot calendar month."\n',
-  '    display_name: "Month"\n',
-  '    synonyms: [snapshot_month]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: quarter\n',
-  '    expr: "DATE_TRUNC(\'QUARTER\', source.as_of_date)"\n',
-  '    comment: "First date of the snapshot calendar quarter."\n',
-  '    display_name: "Quarter"\n',
-  '    synonyms: [snapshot_quarter]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: year\n',
-  '    expr: YEAR(source.as_of_date)\n',
-  '    comment: "Calendar year of the talent snapshot."\n',
-  '    display_name: "Year"\n',
-  '    synonyms: [snapshot_year]\n',
-  '  - name: demonstrated_skill\n',
-  '    expr: source.demonstrated_skill\n',
-  '    comment: "Normalized AI-extracted skill from the latest review."\n',
-  '    display_name: "AI-Extracted Demonstrated Skill"\n',
-  '    synonyms: [skill, competency]\n',
-  '  - name: org_unit_id\n',
-  '    expr: source.org_unit_id\n',
-  '    comment: "Current organization-unit identifier."\n',
-  '    display_name: "Organization Unit ID"\n',
-  '    synonyms: [team_id]\n',
-  '  - name: org_unit_name\n',
-  '    expr: dim_org.org_unit_name\n',
-  '    comment: "Current organization-unit name."\n',
-  '    display_name: "Organization Unit"\n',
-  '    synonyms: [team, branch]\n',
-  '  - name: org_type\n',
-  '    expr: dim_org.org_type\n',
-  '    comment: "Current organization hierarchy type."\n',
-  '    display_name: "Organization Type"\n',
-  '    synonyms: [unit_type]\n',
-  '  - name: business_line\n',
-  '    expr: dim_org.business_line\n',
-  '    comment: "Current top-level bank business line."\n',
-  '    display_name: "Business Line"\n',
-  '    synonyms: [division]\n',
-  '  - name: region\n',
-  '    expr: dim_org.region\n',
-  '    comment: "Current geographic region."\n',
-  '    display_name: "Region"\n',
-  '    synonyms: [geography]\n',
-  '  - name: location\n',
-  '    expr: dim_org.location\n',
-  '    comment: "Current primary work location."\n',
-  '    display_name: "Location"\n',
-  '    synonyms: [site]\n',
-  '  - name: job_code\n',
-  '    expr: source.job_code\n',
-  '    comment: "Current stable job-code identifier."\n',
-  '    display_name: "Job Code"\n',
-  '    synonyms: [role_code]\n',
-  '  - name: job_family\n',
-  '    expr: dim_job.job_family\n',
-  '    comment: "Current job family."\n',
-  '    display_name: "Job Family"\n',
-  '    synonyms: [role_family]\n',
-  '  - name: job_level\n',
-  '    expr: dim_job.job_level\n',
-  '    comment: "Current career level."\n',
-  '    display_name: "Job Level"\n',
-  '    synonyms: [career_level]\n',
-  '  - name: licensed_role_flag\n',
-  '    expr: dim_job.licensed_role_flag\n',
-  '    comment: "Whether the current role requires a license."\n',
-  '    display_name: "Licensed Role"\n',
-  '    synonyms: [licensed_job]\n',
-  '  - name: strategic_role_flag\n',
-  '    expr: dim_job.strategic_role_flag\n',
-  '    comment: "Whether the current role is strategic."\n',
-  '    display_name: "Strategic Role"\n',
-  '    synonyms: [critical_role]\n',
-  '  - name: genai_exposure_tier\n',
-  '    expr: dim_job.genai_exposure_tier\n',
-  '    comment: "AI-classified GenAI exposure tier of the current role."\n',
-  '    display_name: "GenAI Exposure Tier"\n',
-  '    synonyms: [ai_exposure]\n',
-  'measures:\n',
-  '  - name: employees_demonstrating_skill\n',
-  '    expr: COUNT(DISTINCT source.employee_id)\n',
-  '    comment: "Active employees demonstrating the selected AI-extracted skill."\n',
-  '    display_name: "Employees Demonstrating Skill"\n',
-  '    synonyms: [employees_with_skill]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '  - name: high_performers_demonstrating_skill\n',
-  '    expr: COUNT(DISTINCT source.employee_id) FILTER (WHERE source.top_rating_flag)\n',
-  '    comment: "High performers demonstrating the selected AI-extracted skill."\n',
-  '    display_name: "High Performers Demonstrating Skill"\n',
-  '    synonyms: [top_talent_with_skill]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '$$'
+  REPLACE(
+    REPLACE(
+      'version: 1.1
+source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.semantic_talent_skills
+comment: "Current active-employee counts by normalized AI-extracted demonstrated skill."
+joins:
+  - name: dim_org
+    source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_org
+    "on": source.org_unit_id = dim_org.org_unit_id
+  - name: dim_job
+    source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_job
+    "on": source.job_code = dim_job.job_code
+dimensions:
+  - name: as_of_date
+    expr: source.as_of_date
+    comment: "Business date of the current talent snapshot."
+    display_name: "As-of Date"
+    synonyms: [snapshot_date]
+    format: {type: date, date_format: year_month_day}
+  - name: month
+    expr: "DATE_TRUNC(\'MONTH\', source.as_of_date)"
+    comment: "First date of the snapshot calendar month."
+    display_name: "Month"
+    synonyms: [snapshot_month]
+    format: {type: date, date_format: year_month_day}
+  - name: quarter
+    expr: "DATE_TRUNC(\'QUARTER\', source.as_of_date)"
+    comment: "First date of the snapshot calendar quarter."
+    display_name: "Quarter"
+    synonyms: [snapshot_quarter]
+    format: {type: date, date_format: year_month_day}
+  - name: year
+    expr: YEAR(source.as_of_date)
+    comment: "Calendar year of the talent snapshot."
+    display_name: "Year"
+    synonyms: [snapshot_year]
+  - name: demonstrated_skill
+    expr: source.demonstrated_skill
+    comment: "Normalized AI-extracted skill from the latest review."
+    display_name: "AI-Extracted Demonstrated Skill"
+    synonyms: [skill, competency]
+  - name: org_unit_id
+    expr: source.org_unit_id
+    comment: "Current organization-unit identifier."
+    display_name: "Organization Unit ID"
+    synonyms: [team_id]
+  - name: org_unit_name
+    expr: dim_org.org_unit_name
+    comment: "Current organization-unit name."
+    display_name: "Organization Unit"
+    synonyms: [team, branch]
+  - name: org_type
+    expr: dim_org.org_type
+    comment: "Current organization hierarchy type."
+    display_name: "Organization Type"
+    synonyms: [unit_type]
+  - name: business_line
+    expr: dim_org.business_line
+    comment: "Current top-level bank business line."
+    display_name: "Business Line"
+    synonyms: [division]
+  - name: region
+    expr: dim_org.region
+    comment: "Current geographic region."
+    display_name: "Region"
+    synonyms: [geography]
+  - name: location
+    expr: dim_org.location
+    comment: "Current primary work location."
+    display_name: "Location"
+    synonyms: [site]
+  - name: job_code
+    expr: source.job_code
+    comment: "Current stable job-code identifier."
+    display_name: "Job Code"
+    synonyms: [role_code]
+  - name: job_family
+    expr: dim_job.job_family
+    comment: "Current job family."
+    display_name: "Job Family"
+    synonyms: [role_family]
+  - name: job_level
+    expr: dim_job.job_level
+    comment: "Current career level."
+    display_name: "Job Level"
+    synonyms: [career_level]
+  - name: licensed_role_flag
+    expr: dim_job.licensed_role_flag
+    comment: "Whether the current role requires a license."
+    display_name: "Licensed Role"
+    synonyms: [licensed_job]
+  - name: strategic_role_flag
+    expr: dim_job.strategic_role_flag
+    comment: "Whether the current role is strategic."
+    display_name: "Strategic Role"
+    synonyms: [critical_role]
+  - name: genai_exposure_tier
+    expr: dim_job.genai_exposure_tier
+    comment: "AI-classified GenAI exposure tier of the current role."
+    display_name: "GenAI Exposure Tier"
+    synonyms: [ai_exposure]
+measures:
+  - name: employees_demonstrating_skill
+    expr: COUNT(DISTINCT source.employee_id)
+    comment: "Active employees demonstrating the selected AI-extracted skill."
+    display_name: "Employees Demonstrating Skill"
+    synonyms: [employees_with_skill]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+  - name: high_performers_demonstrating_skill
+    expr: COUNT(DISTINCT source.employee_id) FILTER (WHERE source.top_rating_flag)
+    comment: "High performers demonstrating the selected AI-extracted skill."
+    display_name: "High Performers Demonstrating Skill"
+    synonyms: [top_talent_with_skill]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+$$',
+      '__AITA_CATALOG__', :catalog
+    ),
+    '__AITA_GOLD_SCHEMA__', :gold_schema
+  )
 );

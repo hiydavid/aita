@@ -8,10 +8,10 @@ Gold governance through orchestration (Phases 5–8), run on profile `genie-work
 |---|---|---|
 | Gold governance | `74640997233422` | Pipeline `baf23f7b-cfd2-421f-b52a-6e1f089cb3fe` |
 | Semantic helpers | | Pipeline `daa262c6-d33b-409c-9af0-5cd6a137059d` |
-| Metric views | Pipeline job `910806891063837`; semantic job `1017977579100747` | Pipeline `50b9c66a-d2d6-458a-8664-4f5c731317b7` |
+| Metric views | Semantic job `427147701482101` | Pipeline `50b9c66a-d2d6-458a-8664-4f5c731317b7` |
 | Orchestration | `aita_pipeline` `1073150973022044`; semantic `269141171180276` | SDP `ca8c43ee-c9ac-4614-b342-a5ee56e78fb6`; Lakebase `e4c38851-fe0d-4004-972a-6f3a0df4d2d1` |
 
-In semantic job `1017977579100747`, all eight publication tasks passed and the grants task failed; grant remediation is deferred (see Access).
+Semantic job `427147701482101` passed all eight publication tasks; the deferred grant issue is unchanged (see Access).
 
 ## Gold Governance
 
@@ -56,7 +56,7 @@ The snapshot uses Gold business date `2026-12-31`, and the watchlist is unchange
 
 All eight views are registered as `METRIC_VIEW`: `mv_workforce`, `mv_attrition`, `mv_engagement`, `mv_productivity`, `mv_talent`, `mv_talent_skills`, `mv_requisitions`, and `mv_recruiting_funnel`.
 
-The two `src/semantic/metric_validation_*.sql` files ran as statements `01f1d168-6c1a-1d67-a8f4-c7d3fbe2f373` and `01f1d168-5a69-1a21-885c-67d71bf87b73`: 12 direct-Gold parity checks, zero violations. They cover every required measure, plus:
+After job `427147701482101`, all 12 direct-Gold parity checks passed and canonical `SHOW CREATE TABLE` output was unchanged for all eight views. Coverage includes:
 
 - yearly semi-additive headcount and multi-month rates
 - previous-wave engagement

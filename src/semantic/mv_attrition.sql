@@ -1,149 +1,155 @@
 EXECUTE IMMEDIATE CONCAT(
   'CREATE OR REPLACE VIEW `', :catalog, '`.`', :gold_schema,
   '`.`mv_attrition` WITH METRICS LANGUAGE YAML AS $$\n',
-  'version: 1.1\n',
-  'source: ', :catalog, '.', :gold_schema, '.fact_attrition_event\n',
-  'comment: "Exit-event metrics with historical organization, job, manager, and AI-classified exit signals."\n',
-  'joins:\n',
-  '  - name: dim_org\n',
-  '    source: ', :catalog, '.', :gold_schema, '.dim_org\n',
-  '    "on": source.org_unit_id = dim_org.org_unit_id\n',
-  '  - name: dim_job\n',
-  '    source: ', :catalog, '.', :gold_schema, '.dim_job\n',
-  '    "on": source.job_code = dim_job.job_code\n',
-  'dimensions:\n',
-  '  - name: exit_date\n',
-  '    expr: source.exit_date\n',
-  '    comment: "Effective date of the employee exit."\n',
-  '    display_name: "Exit Date"\n',
-  '    synonyms: [termination_date]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: month\n',
-  '    expr: source.exit_month\n',
-  '    comment: "First date of the exit calendar month."\n',
-  '    display_name: "Month"\n',
-  '    synonyms: [exit_month]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: quarter\n',
-  '    expr: "DATE_TRUNC(\'QUARTER\', source.exit_date)"\n',
-  '    comment: "First date of the exit calendar quarter."\n',
-  '    display_name: "Quarter"\n',
-  '    synonyms: [exit_quarter]\n',
-  '    format: {type: date, date_format: year_month_day}\n',
-  '  - name: year\n',
-  '    expr: YEAR(source.exit_date)\n',
-  '    comment: "Calendar year of the exit."\n',
-  '    display_name: "Year"\n',
-  '    synonyms: [exit_year]\n',
-  '  - name: org_unit_id\n',
-  '    expr: source.org_unit_id\n',
-  '    comment: "Organization-unit identifier at exit."\n',
-  '    display_name: "Organization Unit ID"\n',
-  '    synonyms: [team_id]\n',
-  '  - name: org_unit_name\n',
-  '    expr: dim_org.org_unit_name\n',
-  '    comment: "Organization-unit name at exit."\n',
-  '    display_name: "Organization Unit"\n',
-  '    synonyms: [team, branch, contact_center]\n',
-  '  - name: org_type\n',
-  '    expr: dim_org.org_type\n',
-  '    comment: "Organization hierarchy type at exit."\n',
-  '    display_name: "Organization Type"\n',
-  '    synonyms: [unit_type]\n',
-  '  - name: business_line\n',
-  '    expr: dim_org.business_line\n',
-  '    comment: "Business line at exit."\n',
-  '    display_name: "Business Line"\n',
-  '    synonyms: [division]\n',
-  '  - name: region\n',
-  '    expr: dim_org.region\n',
-  '    comment: "Geographic region at exit."\n',
-  '    display_name: "Region"\n',
-  '    synonyms: [geography]\n',
-  '  - name: location\n',
-  '    expr: dim_org.location\n',
-  '    comment: "Primary organization location at exit."\n',
-  '    display_name: "Location"\n',
-  '    synonyms: [site]\n',
-  '  - name: job_code\n',
-  '    expr: source.job_code\n',
-  '    comment: "Job-code identifier at exit."\n',
-  '    display_name: "Job Code"\n',
-  '    synonyms: [role_code]\n',
-  '  - name: job_family\n',
-  '    expr: dim_job.job_family\n',
-  '    comment: "Job family at exit."\n',
-  '    display_name: "Job Family"\n',
-  '    synonyms: [role_family]\n',
-  '  - name: job_level\n',
-  '    expr: dim_job.job_level\n',
-  '    comment: "Career level at exit."\n',
-  '    display_name: "Job Level"\n',
-  '    synonyms: [career_level]\n',
-  '  - name: licensed_role_flag\n',
-  '    expr: source.licensed_role_flag\n',
-  '    comment: "Whether the role at exit required a license."\n',
-  '    display_name: "Licensed Role"\n',
-  '    synonyms: [licensed_job]\n',
-  '  - name: strategic_role_flag\n',
-  '    expr: source.strategic_role_flag\n',
-  '    comment: "Whether the role at exit was strategic."\n',
-  '    display_name: "Strategic Role"\n',
-  '    synonyms: [critical_role]\n',
-  '  - name: genai_exposure_tier\n',
-  '    expr: dim_job.genai_exposure_tier\n',
-  '    comment: "AI-classified GenAI exposure tier of the exited role."\n',
-  '    display_name: "GenAI Exposure Tier"\n',
-  '    synonyms: [ai_exposure]\n',
-  '  - name: manager_id\n',
-  '    expr: source.manager_id\n',
-  '    comment: "Manager identifier recorded at exit."\n',
-  '    display_name: "Manager ID"\n',
-  '    synonyms: [supervisor_id]\n',
-  '  - name: tenure_band\n',
-  '    expr: "CASE WHEN source.tenure_days < 365 THEN \'Under 1 year\' WHEN source.tenure_days < 1095 THEN \'1-2 years\' WHEN source.tenure_days < 1826 THEN \'3-4 years\' ELSE \'5+ years\' END"\n',
-  '    comment: "Employee tenure band at exit."\n',
-  '    display_name: "Tenure Band"\n',
-  '    synonyms: [service_band]\n',
-  '  - name: termination_type\n',
-  '    expr: source.termination_type\n',
-  '    comment: "Voluntary or involuntary exit classification."\n',
-  '    display_name: "Termination Type"\n',
-  '    synonyms: [exit_type]\n',
-  '  - name: exit_reason\n',
-  '    expr: source.exit_reason\n',
-  '    comment: "AI-classified reason from exit-interview text."\n',
-  '    display_name: "AI-Classified Exit Reason"\n',
-  '    synonyms: [departure_reason]\n',
-  '  - name: exit_sentiment\n',
-  '    expr: source.exit_sentiment\n',
-  '    comment: "AI-analyzed sentiment from exit-interview text."\n',
-  '    display_name: "Exit Sentiment"\n',
-  '    synonyms: [departure_sentiment]\n',
-  'measures:\n',
-  '  - name: exits\n',
-  '    expr: COUNT(1)\n',
-  '    comment: "Voluntary and involuntary exit events."\n',
-  '    display_name: "Exits"\n',
-  '    synonyms: [leavers]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '  - name: voluntary_exits\n',
-  '    expr: COUNT(1) FILTER (WHERE source.is_voluntary)\n',
-  '    comment: "Exit events classified as voluntary."\n',
-  '    display_name: "Voluntary Exits"\n',
-  '    synonyms: [voluntary_leavers]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '  - name: regrettable_exits\n',
-  '    expr: COUNT(1) FILTER (WHERE source.regrettable_flag)\n',
-  '    comment: "Exits where the latest performance rating was 4 or 5."\n',
-  '    display_name: "Regrettable Exits"\n',
-  '    synonyms: [high_value_exits]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '  - name: regrettable_voluntary_exits\n',
-  '    expr: COUNT(1) FILTER (WHERE source.is_voluntary AND source.regrettable_flag)\n',
-  '    comment: "Voluntary exits where the latest performance rating was 4 or 5."\n',
-  '    display_name: "Regrettable Voluntary Exits"\n',
-  '    synonyms: [regrettable_turnover]\n',
-  '    format: {type: number, decimal_places: {type: exact, places: 0}}\n',
-  '$$'
+  REPLACE(
+    REPLACE(
+      'version: 1.1
+source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.fact_attrition_event
+comment: "Exit-event metrics with historical organization, job, manager, and AI-classified exit signals."
+joins:
+  - name: dim_org
+    source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_org
+    "on": source.org_unit_id = dim_org.org_unit_id
+  - name: dim_job
+    source: __AITA_CATALOG__.__AITA_GOLD_SCHEMA__.dim_job
+    "on": source.job_code = dim_job.job_code
+dimensions:
+  - name: exit_date
+    expr: source.exit_date
+    comment: "Effective date of the employee exit."
+    display_name: "Exit Date"
+    synonyms: [termination_date]
+    format: {type: date, date_format: year_month_day}
+  - name: month
+    expr: source.exit_month
+    comment: "First date of the exit calendar month."
+    display_name: "Month"
+    synonyms: [exit_month]
+    format: {type: date, date_format: year_month_day}
+  - name: quarter
+    expr: "DATE_TRUNC(\'QUARTER\', source.exit_date)"
+    comment: "First date of the exit calendar quarter."
+    display_name: "Quarter"
+    synonyms: [exit_quarter]
+    format: {type: date, date_format: year_month_day}
+  - name: year
+    expr: YEAR(source.exit_date)
+    comment: "Calendar year of the exit."
+    display_name: "Year"
+    synonyms: [exit_year]
+  - name: org_unit_id
+    expr: source.org_unit_id
+    comment: "Organization-unit identifier at exit."
+    display_name: "Organization Unit ID"
+    synonyms: [team_id]
+  - name: org_unit_name
+    expr: dim_org.org_unit_name
+    comment: "Organization-unit name at exit."
+    display_name: "Organization Unit"
+    synonyms: [team, branch, contact_center]
+  - name: org_type
+    expr: dim_org.org_type
+    comment: "Organization hierarchy type at exit."
+    display_name: "Organization Type"
+    synonyms: [unit_type]
+  - name: business_line
+    expr: dim_org.business_line
+    comment: "Business line at exit."
+    display_name: "Business Line"
+    synonyms: [division]
+  - name: region
+    expr: dim_org.region
+    comment: "Geographic region at exit."
+    display_name: "Region"
+    synonyms: [geography]
+  - name: location
+    expr: dim_org.location
+    comment: "Primary organization location at exit."
+    display_name: "Location"
+    synonyms: [site]
+  - name: job_code
+    expr: source.job_code
+    comment: "Job-code identifier at exit."
+    display_name: "Job Code"
+    synonyms: [role_code]
+  - name: job_family
+    expr: dim_job.job_family
+    comment: "Job family at exit."
+    display_name: "Job Family"
+    synonyms: [role_family]
+  - name: job_level
+    expr: dim_job.job_level
+    comment: "Career level at exit."
+    display_name: "Job Level"
+    synonyms: [career_level]
+  - name: licensed_role_flag
+    expr: source.licensed_role_flag
+    comment: "Whether the role at exit required a license."
+    display_name: "Licensed Role"
+    synonyms: [licensed_job]
+  - name: strategic_role_flag
+    expr: source.strategic_role_flag
+    comment: "Whether the role at exit was strategic."
+    display_name: "Strategic Role"
+    synonyms: [critical_role]
+  - name: genai_exposure_tier
+    expr: dim_job.genai_exposure_tier
+    comment: "AI-classified GenAI exposure tier of the exited role."
+    display_name: "GenAI Exposure Tier"
+    synonyms: [ai_exposure]
+  - name: manager_id
+    expr: source.manager_id
+    comment: "Manager identifier recorded at exit."
+    display_name: "Manager ID"
+    synonyms: [supervisor_id]
+  - name: tenure_band
+    expr: "CASE WHEN source.tenure_days < 365 THEN \'Under 1 year\' WHEN source.tenure_days < 1095 THEN \'1-2 years\' WHEN source.tenure_days < 1826 THEN \'3-4 years\' ELSE \'5+ years\' END"
+    comment: "Employee tenure band at exit."
+    display_name: "Tenure Band"
+    synonyms: [service_band]
+  - name: termination_type
+    expr: source.termination_type
+    comment: "Voluntary or involuntary exit classification."
+    display_name: "Termination Type"
+    synonyms: [exit_type]
+  - name: exit_reason
+    expr: source.exit_reason
+    comment: "AI-classified reason from exit-interview text."
+    display_name: "AI-Classified Exit Reason"
+    synonyms: [departure_reason]
+  - name: exit_sentiment
+    expr: source.exit_sentiment
+    comment: "AI-analyzed sentiment from exit-interview text."
+    display_name: "Exit Sentiment"
+    synonyms: [departure_sentiment]
+measures:
+  - name: exits
+    expr: COUNT(1)
+    comment: "Voluntary and involuntary exit events."
+    display_name: "Exits"
+    synonyms: [leavers]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+  - name: voluntary_exits
+    expr: COUNT(1) FILTER (WHERE source.is_voluntary)
+    comment: "Exit events classified as voluntary."
+    display_name: "Voluntary Exits"
+    synonyms: [voluntary_leavers]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+  - name: regrettable_exits
+    expr: COUNT(1) FILTER (WHERE source.regrettable_flag)
+    comment: "Exits where the latest performance rating was 4 or 5."
+    display_name: "Regrettable Exits"
+    synonyms: [high_value_exits]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+  - name: regrettable_voluntary_exits
+    expr: COUNT(1) FILTER (WHERE source.is_voluntary AND source.regrettable_flag)
+    comment: "Voluntary exits where the latest performance rating was 4 or 5."
+    display_name: "Regrettable Voluntary Exits"
+    synonyms: [regrettable_turnover]
+    format: {type: number, decimal_places: {type: exact, places: 0}}
+$$',
+      '__AITA_CATALOG__', :catalog
+    ),
+    '__AITA_GOLD_SCHEMA__', :gold_schema
+  )
 );

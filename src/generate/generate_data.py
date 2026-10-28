@@ -36,6 +36,9 @@ BUSINESS_LINES = [
 ]
 
 JOB_PREFIXES = ["CON", "WEA", "COM", "OPS", "TEC", "COR"]
+CONTACT_CENTER_ORGS = (0, 1)
+FRAUD_OPS_ORGS = (36, 37)
+STANDOUT_ORGS = (10, 11, 38)
 
 JOB_TITLES = [
     "Contact Center Representative",
@@ -135,6 +138,13 @@ def array_item(values: list[str], zero_based_index: Column) -> Column:
     return F.element_at(literal_array(values), zero_based_index.cast("int") + F.lit(1))
 
 
+def job_code_expr(line_index: Column, one_based_role_number: Column) -> Column:
+    return F.concat(
+        array_item(JOB_PREFIXES, line_index),
+        F.format_string("%02d", one_based_role_number),
+    )
+
+
 def stable_mod(seed: int, modulus: int, salt: int, *columns: Column) -> Column:
     return F.pmod(F.xxhash64(*columns, F.lit(seed + salt)), F.lit(modulus)).cast("long")
 
@@ -183,10 +193,7 @@ def build_jobs(spark: SparkSession) -> DataFrame:
     line_index = F.floor(job_index / F.lit(10)).cast("int")
     role_index = F.pmod(job_index, F.lit(10)).cast("int")
     job_title = array_item(JOB_TITLES, job_index)
-    job_code = F.concat(
-        array_item(JOB_PREFIXES, line_index),
-        F.format_string("%02d", role_index + F.lit(1)),
-    )
+    job_code = job_code_expr(line_index, role_index + F.lit(1))
     licensed_role = ((line_index == 1) & (role_index <= 2)) | (
         (line_index == 0) & (role_index == 8)
     )
@@ -265,6 +272,9 @@ def build_org_units(spark: SparkSession) -> DataFrame:
     line_index = F.floor(org_index / F.lit(12)).cast("int")
     unit_index = F.pmod(org_index, F.lit(12)).cast("int")
     business_line = array_item(BUSINESS_LINES, line_index)
+    contact_center = org_index.isin(*CONTACT_CENTER_ORGS)
+    fraud_operations = org_index.isin(*FRAUD_OPS_ORGS)
+    standout_team = org_index.isin(*STANDOUT_ORGS)
     special_name = (
         F.when(org_index == 0, F.lit("Phoenix Contact Center"))
         .when(org_index == 1, F.lit("Tampa Contact Center"))
@@ -282,8 +292,8 @@ def build_org_units(spark: SparkSession) -> DataFrame:
         )
     )
     org_type = (
-        F.when(org_index.isin(0, 1), F.lit("Contact Center"))
-        .when(org_index.isin(36, 37), F.lit("Fraud Operations"))
+        F.when(contact_center, F.lit("Contact Center"))
+        .when(fraud_operations, F.lit("Fraud Operations"))
         .when(line_index == 0, F.lit("Branch Network"))
         .when(line_index == 4, F.lit("Technology Team"))
         .otherwise(F.lit("Business Team"))
@@ -308,10 +318,10 @@ def build_org_units(spark: SparkSession) -> DataFrame:
                 "parent_org_unit_id"
             ),
             F.format_string("EMP%06d", org_index + F.lit(1)).alias("manager_id"),
-            F.when(org_index.isin(0, 1), F.lit("2026-01-15").cast("date")).alias(
+            F.when(contact_center, F.lit("2026-01-15").cast("date")).alias(
                 "schedule_change_date"
             ),
-            org_index.isin(10, 11, 38).alias("standout_manager_flag"),
+            standout_team.alias("standout_manager_flag"),
         )
     )
 
@@ -320,20 +330,21 @@ def build_workers(spark: SparkSession, worker_count: int, seed: int) -> tuple[Da
     worker_index = F.col("worker_index")
     org_index = F.pmod(worker_index, F.lit(ORG_UNIT_COUNT)).cast("int")
     line_index = F.floor(org_index / F.lit(12)).cast("int")
+    contact_center = org_index.isin(*CONTACT_CENTER_ORGS)
+    fraud_operations = org_index.isin(*FRAUD_OPS_ORGS)
+    standout_team = org_index.isin(*STANDOUT_ORGS)
     ordinary_role_index = F.pmod(F.floor(worker_index / F.lit(ORG_UNIT_COUNT)), F.lit(10)).cast(
         "int"
     )
     role_index = (
-        F.when(org_index.isin(0, 1), F.pmod(ordinary_role_index, F.lit(4)))
-        .when(org_index.isin(36, 37), F.pmod(ordinary_role_index, F.lit(5)))
+        F.when(contact_center, F.pmod(ordinary_role_index, F.lit(4)))
+        .when(fraud_operations, F.pmod(ordinary_role_index, F.lit(5)))
         .otherwise(ordinary_role_index)
         .cast("int")
     )
     worker_id = F.format_string("EMP%06d", worker_index + F.lit(1))
     org_unit_id = F.format_string("ORG%03d", org_index + F.lit(1))
-    job_code = F.concat(
-        array_item(JOB_PREFIXES, line_index), F.format_string("%02d", role_index + F.lit(1))
-    )
+    job_code = job_code_expr(line_index, role_index + F.lit(1))
     business_line = array_item(BUSINESS_LINES, line_index)
     manager_slot = F.pmod(
         F.floor(worker_index / F.lit(ORG_UNIT_COUNT)), F.lit(4)
@@ -345,8 +356,6 @@ def build_workers(spark: SparkSession, worker_count: int, seed: int) -> tuple[Da
         (stable_mod(seed, 5_110, 1, worker_index) + F.lit(365)).cast("int"),
     )
     target_manager = manager_id.isin("EMP000001", "EMP000073", "EMP000002")
-    contact_center = org_index.isin(0, 1)
-    standout_team = org_index.isin(10, 11, 38)
     exit_fraction = stable_fraction(seed, 2, worker_index)
     exits = (
         F.when(contact_center & target_manager, exit_fraction < F.lit(0.48))
@@ -393,7 +402,7 @@ def build_workers(spark: SparkSession, worker_count: int, seed: int) -> tuple[Da
             termination_date.alias("termination_date"),
             target_manager.alias("target_manager_flag"),
             contact_center.alias("contact_center_flag"),
-            org_index.isin(36, 37).alias("fraud_operations_flag"),
+            fraud_operations.alias("fraud_operations_flag"),
             standout_team.alias("standout_team_flag"),
             stalled_high_performer.alias("stalled_high_performer_flag"),
             promotion_flag.alias("promotion_flag"),
@@ -451,15 +460,49 @@ def build_workers(spark: SparkSession, worker_count: int, seed: int) -> tuple[Da
 def build_job_history(workers_core: DataFrame, seed: int) -> DataFrame:
     role_index = F.col("role_index")
     line_index = F.col("line_index")
-    prior_job_code = F.concat(
-        array_item(JOB_PREFIXES, line_index),
-        F.format_string("%02d", F.greatest(role_index, F.lit(1))),
-    )
+    prior_job_code = job_code_expr(line_index, F.greatest(role_index, F.lit(1)))
     prior_org_index = F.pmod(F.col("org_index") + F.lit(1), F.lit(ORG_UNIT_COUNT))
     prior_org_unit_id = F.format_string("ORG%03d", prior_org_index + F.lit(1))
     prior_manager_id = F.format_string(
         "EMP%06d", F.pmod(F.col("worker_index") + F.lit(72), F.lit(288)) + F.lit(1)
     )
+    null_string = F.lit(None).cast("string")
+
+    def event_rows(
+        event_type: str,
+        event_date: Column,
+        condition: Column,
+        event_reason: Column,
+        *,
+        before_termination: bool = True,
+        **overrides: Column,
+    ) -> DataFrame:
+        if before_termination:
+            condition = condition & (
+                F.col("termination_date").isNull()
+                | (event_date < F.col("termination_date"))
+            )
+        values = {
+            "job_code": F.col("job_code"),
+            "previous_job_code": F.col("job_code"),
+            "org_unit_id": F.col("org_unit_id"),
+            "previous_org_unit_id": F.col("org_unit_id"),
+            "manager_id": F.col("manager_id"),
+            "previous_manager_id": F.col("manager_id"),
+            "termination_type": null_string,
+        }
+        values.update(overrides)
+        return workers_core.where(condition).select(
+            F.concat(
+                F.col("worker_id"), F.lit(f"-{event_type.removesuffix('_CHANGE')}")
+            ).alias("event_id"),
+            "worker_id",
+            F.lit(event_type).alias("event_type"),
+            event_date.alias("event_date"),
+            *(value.alias(name) for name, value in values.items()),
+            event_reason.alias("event_reason"),
+        )
+
     hire_events = workers_core.select(
         F.concat(F.col("worker_id"), F.lit("-HIRE")).alias("event_id"),
         "worker_id",
@@ -468,107 +511,66 @@ def build_job_history(workers_core: DataFrame, seed: int) -> DataFrame:
         F.when(F.col("promotion_flag"), prior_job_code).otherwise(F.col("job_code")).alias(
             "job_code"
         ),
-        F.lit(None).cast("string").alias("previous_job_code"),
+        null_string.alias("previous_job_code"),
         F.when(F.col("transfer_flag"), prior_org_unit_id)
         .otherwise(F.col("org_unit_id"))
         .alias("org_unit_id"),
-        F.lit(None).cast("string").alias("previous_org_unit_id"),
+        null_string.alias("previous_org_unit_id"),
         F.when(F.col("manager_change_flag"), prior_manager_id)
         .otherwise(F.col("manager_id"))
         .alias("manager_id"),
-        F.lit(None).cast("string").alias("previous_manager_id"),
-        F.lit(None).cast("string").alias("termination_type"),
+        null_string.alias("previous_manager_id"),
+        null_string.alias("termination_type"),
         F.lit("Initial hire").alias("event_reason"),
     )
     promotion_date = F.date_add(
         F.lit(HISTORY_START),
         (stable_mod(seed, 510, 12, F.col("worker_index")) + F.lit(30)).cast("int"),
     )
-    promotion_events = workers_core.where(
-        F.col("promotion_flag")
-        & (F.col("termination_date").isNull() | (promotion_date < F.col("termination_date")))
-    ).select(
-        F.concat(F.col("worker_id"), F.lit("-PROMOTION")).alias("event_id"),
-        "worker_id",
-        F.lit("PROMOTION").alias("event_type"),
-        promotion_date.alias("event_date"),
-        "job_code",
-        prior_job_code.alias("previous_job_code"),
-        "org_unit_id",
-        F.col("org_unit_id").alias("previous_org_unit_id"),
-        "manager_id",
-        F.col("manager_id").alias("previous_manager_id"),
-        F.lit(None).cast("string").alias("termination_type"),
-        F.lit("Merit promotion").alias("event_reason"),
+    promotion_events = event_rows(
+        "PROMOTION",
+        promotion_date,
+        F.col("promotion_flag"),
+        F.lit("Merit promotion"),
+        previous_job_code=prior_job_code,
     )
     transfer_date = F.date_add(
         F.lit(HISTORY_START),
         (stable_mod(seed, 480, 13, F.col("worker_index")) + F.lit(60)).cast("int"),
     )
-    transfer_events = workers_core.where(
-        F.col("transfer_flag")
-        & (F.col("termination_date").isNull() | (transfer_date < F.col("termination_date")))
-    ).select(
-        F.concat(F.col("worker_id"), F.lit("-TRANSFER")).alias("event_id"),
-        "worker_id",
-        F.lit("TRANSFER").alias("event_type"),
-        transfer_date.alias("event_date"),
-        "job_code",
-        F.col("job_code").alias("previous_job_code"),
-        "org_unit_id",
-        prior_org_unit_id.alias("previous_org_unit_id"),
-        "manager_id",
-        prior_manager_id.alias("previous_manager_id"),
-        F.lit(None).cast("string").alias("termination_type"),
-        F.lit("Internal mobility").alias("event_reason"),
+    transfer_events = event_rows(
+        "TRANSFER",
+        transfer_date,
+        F.col("transfer_flag"),
+        F.lit("Internal mobility"),
+        previous_org_unit_id=prior_org_unit_id,
+        previous_manager_id=prior_manager_id,
     )
     manager_change_date = F.date_add(
         F.lit(HISTORY_START),
         (stable_mod(seed, 450, 14, F.col("worker_index")) + F.lit(90)).cast("int"),
     )
-    manager_change_events = workers_core.where(
-        F.col("manager_change_flag")
-        & (
-            F.col("termination_date").isNull()
-            | (manager_change_date < F.col("termination_date"))
-        )
-    ).select(
-        F.concat(F.col("worker_id"), F.lit("-MANAGER")).alias("event_id"),
-        "worker_id",
-        F.lit("MANAGER_CHANGE").alias("event_type"),
-        manager_change_date.alias("event_date"),
-        "job_code",
-        F.col("job_code").alias("previous_job_code"),
-        "org_unit_id",
-        F.col("org_unit_id").alias("previous_org_unit_id"),
-        "manager_id",
-        prior_manager_id.alias("previous_manager_id"),
-        F.lit(None).cast("string").alias("termination_type"),
-        F.lit("Organization change").alias("event_reason"),
+    manager_change_events = event_rows(
+        "MANAGER_CHANGE",
+        manager_change_date,
+        F.col("manager_change_flag"),
+        F.lit("Organization change"),
+        previous_manager_id=prior_manager_id,
     )
-    exit_events = workers_core.where(F.col("termination_date").isNotNull()).select(
-        F.concat(F.col("worker_id"), F.lit("-EXIT")).alias("event_id"),
-        "worker_id",
-        F.lit("EXIT").alias("event_type"),
-        F.col("termination_date").alias("event_date"),
-        "job_code",
-        F.col("job_code").alias("previous_job_code"),
-        "org_unit_id",
-        F.col("org_unit_id").alias("previous_org_unit_id"),
-        "manager_id",
-        F.col("manager_id").alias("previous_manager_id"),
-        F.when(
-            F.col("contact_center_flag") & F.col("target_manager_flag"), "Voluntary"
-        )
-        .when(stable_fraction(seed, 15, F.col("worker_index")) < 0.72, "Voluntary")
-        .otherwise("Involuntary")
-        .alias("termination_type"),
+    exit_events = event_rows(
+        "EXIT",
+        F.col("termination_date"),
+        F.col("termination_date").isNotNull(),
         F.when(
             F.col("contact_center_flag") & F.col("target_manager_flag"),
             "Schedule and workload following operating model change",
+        ).otherwise("Standard employee departure"),
+        before_termination=False,
+        termination_type=F.when(
+            F.col("contact_center_flag") & F.col("target_manager_flag"), "Voluntary"
         )
-        .otherwise("Standard employee departure")
-        .alias("event_reason"),
+        .when(stable_fraction(seed, 15, F.col("worker_index")) < 0.72, "Voluntary")
+        .otherwise("Involuntary"),
     )
     return (
         hire_events.unionByName(promotion_events)
@@ -701,25 +703,31 @@ def build_team_productivity(spark: SparkSession, seed: int) -> DataFrame:
     orgs = spark.range(ORG_UNIT_COUNT, numPartitions=1).withColumnRenamed("id", "org_index")
     months = spark.range(24, numPartitions=1).withColumnRenamed("id", "month_index")
     base = orgs.crossJoin(months)
-    fraud_operations = org_index.isin(36, 37)
-    contact_center = org_index.isin(0, 1)
-    standout_team = org_index.isin(10, 11, 38)
+    fraud_operations = org_index.isin(*FRAUD_OPS_ORGS)
+    contact_center = org_index.isin(*CONTACT_CENTER_ORGS)
+    standout_team = org_index.isin(*STANDOUT_ORGS)
     late_period = month_index >= 12
     schedule_period = month_index >= 16
     noise = stable_fraction(seed, 19, org_index, month_index) - F.lit(0.5)
-    overtime = F.round(
-        F.when(fraud_operations & late_period, F.lit(260.0) + noise * 50)
-        .when(contact_center & schedule_period, F.lit(210.0) + noise * 40)
-        .when(standout_team, F.lit(70.0) + noise * 20)
-        .otherwise(F.lit(105.0) + noise * 45),
-        1,
+    segment_index = (
+        F.when(fraud_operations & late_period, 0)
+        .when(contact_center & schedule_period, 1)
+        .when(standout_team, 2)
+        .otherwise(3)
     )
-    csat = F.round(
-        F.when(fraud_operations & late_period, F.lit(3.55) + noise * 0.35)
-        .when(contact_center & schedule_period, F.lit(3.65) + noise * 0.3)
-        .when(standout_team, F.lit(4.75) + noise * 0.2)
-        .otherwise(F.lit(4.25) + noise * 0.35),
-        2,
+
+    def segment_value(values) -> Column:
+        return F.element_at(F.array(*(F.lit(value) for value in values)), segment_index + 1)
+
+    def productivity_metric(parameters, precision: int) -> Column:
+        base_values, noise_scales = zip(*parameters)
+        return F.round(segment_value(base_values) + noise * segment_value(noise_scales), precision)
+
+    overtime = productivity_metric(
+        ((260.0, 50), (210.0, 40), (70.0, 20), (105.0, 45)), 1
+    )
+    csat = productivity_metric(
+        ((3.55, 0.35), (3.65, 0.3), (4.75, 0.2), (4.25, 0.35)), 2
     )
     return base.select(
         F.format_string("ORG%03d", org_index + F.lit(1)).alias("team_id"),
@@ -729,20 +737,13 @@ def build_team_productivity(spark: SparkSession, seed: int) -> DataFrame:
             + stable_mod(seed, 2_000, 20, org_index, month_index)
             + F.when(standout_team, 1_100).otherwise(0)
         ).alias("cases_handled"),
-        F.round(
-            F.when(fraud_operations & late_period, F.lit(18.0) + noise * 2.0)
-            .when(contact_center & schedule_period, F.lit(14.5) + noise * 1.5)
-            .when(standout_team, F.lit(8.4) + noise)
-            .otherwise(F.lit(10.5) + noise * 1.5),
-            2,
+        productivity_metric(
+            ((18.0, 2.0), (14.5, 1.5), (8.4, 1.0), (10.5, 1.5)), 2
         ).alias("avg_handle_time_minutes"),
         csat.alias("csat_score"),
         overtime.alias("overtime_hours"),
-        F.round(
-            F.when(standout_team, F.lit(97.0) + noise * 2.0)
-            .when(fraud_operations & late_period, F.lit(87.0) + noise * 3.0)
-            .otherwise(F.lit(93.0) + noise * 3.0),
-            1,
+        productivity_metric(
+            ((87.0, 3.0), (93.0, 3.0), (97.0, 2.0), (93.0, 3.0)), 1
         ).alias("quality_score"),
     )
 
@@ -890,9 +891,7 @@ def build_requisitions(spark: SparkSession, seed: int) -> DataFrame:
     role_index = F.when(
         contact_center_backfill, F.pmod(month_position, F.lit(2)).cast("int")
     ).otherwise(ordinary_role_index)
-    job_code = F.concat(
-        array_item(JOB_PREFIXES, line_index), F.format_string("%02d", role_index + F.lit(1))
-    )
+    job_code = job_code_expr(line_index, role_index + F.lit(1))
     licensed_role = ((line_index == 1) & (role_index <= 2)) | (
         (line_index == 0) & (role_index == 8)
     )

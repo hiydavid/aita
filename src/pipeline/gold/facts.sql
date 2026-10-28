@@ -1,5 +1,18 @@
 USE CATALOG `${catalog}`;
 
+CREATE TEMPORARY VIEW worker_versions
+AS
+SELECT
+  worker_id,
+  event_type,
+  job_code,
+  org_unit_id,
+  `__START_AT`.event_date AS valid_from,
+  coalesce(`__END_AT`.event_date, DATE '9999-12-31') AS valid_to
+FROM `${catalog}`.`${silver_schema}`.`worker_history`
+WHERE `__END_AT` IS NULL
+  OR `__END_AT`.event_date > `__START_AT`.event_date;
+
 CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`fact_headcount_monthly` (
   month_start DATE COMMENT 'First date of the reporting month.',
   month_end DATE COMMENT 'Last date of the reporting month used for end-of-month headcount.',
@@ -30,18 +43,6 @@ months AS (
   LATERAL VIEW explode(
     sequence(minimum_month, maximum_month, INTERVAL 1 MONTH)
   ) generated_months AS month_start
-),
-worker_versions AS (
-  SELECT
-    worker_id,
-    event_type,
-    job_code,
-    org_unit_id,
-    `__START_AT`.event_date AS valid_from,
-    coalesce(`__END_AT`.event_date, DATE '9999-12-31') AS valid_to
-  FROM `${catalog}`.`${silver_schema}`.`worker_history`
-  WHERE `__END_AT` IS NULL
-    OR `__END_AT`.event_date > `__START_AT`.event_date
 ),
 month_end_headcount AS (
   SELECT
@@ -188,16 +189,6 @@ CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`fact_engageme
 CLUSTER BY (survey_date, org_unit_id)
 COMMENT 'One row per employee survey response and wave with effective job assignment and AI-derived sentiment and theme. Used for engagement and burnout analysis.'
 AS
-WITH worker_versions AS (
-  SELECT
-    worker_id,
-    job_code,
-    `__START_AT`.event_date AS valid_from,
-    coalesce(`__END_AT`.event_date, DATE '9999-12-31') AS valid_to
-  FROM `${catalog}`.`${silver_schema}`.`worker_history`
-  WHERE `__END_AT` IS NULL
-    OR `__END_AT`.event_date > `__START_AT`.event_date
-)
 SELECT
   engagement.survey_response_id,
   engagement.worker_id AS employee_id,
@@ -442,16 +433,6 @@ WITH stage_events AS (
     ) AS outcome_stage
   FROM `${catalog}`.`${silver_schema}`.`application_events`
   GROUP BY application_id
-),
-worker_versions AS (
-  SELECT
-    worker_id,
-    job_code,
-    `__START_AT`.event_date AS valid_from,
-    coalesce(`__END_AT`.event_date, DATE '9999-12-31') AS valid_to
-  FROM `${catalog}`.`${silver_schema}`.`worker_history`
-  WHERE `__END_AT` IS NULL
-    OR `__END_AT`.event_date > `__START_AT`.event_date
 )
 SELECT
   application.application_id,

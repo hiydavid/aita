@@ -118,7 +118,7 @@ Resolved issues behind the current design:
 | `fact_requisition` | 2,400 | requisition |
 | `fact_application_funnel` | 28,800 | application |
 
-All 12 tables have zero duplicate or null keys and zero source-count differences. Nineteen fact-to-dimension checks found zero orphan keys. The shared `worker_versions` update retained identical counts and dual row fingerprints for all three affected facts; all 25 semantic and metric checks passed.
+All 12 tables have zero duplicate or null keys and zero source-count differences; 19 fact-to-dimension checks found zero orphan keys. Updates `a40a2324-758c-4fb8-a0e5-4b5ce27054f4` (`worker_versions`) and `84990991-4115-4097-9d9c-6d01e74bfe77` (`latest_talent`) retained exact counts, grains, and dual fingerprints; all 13 semantic and relevant metric checks passed.
 
 - Headcount: 24 months, 2024-10 through 2026-09, derived from `team_productivity`; September 2026 month-end headcount is 18,839; 1,161 exits, 884 voluntary; zero empty cells.
 - Temporal joins use half-open SCD Type 2 intervals. The single zero-length history version is excluded from interval scans, and its manager-change event is still counted.

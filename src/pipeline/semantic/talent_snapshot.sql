@@ -46,22 +46,6 @@ AS
 WITH snapshot_as_of AS (
   SELECT max(as_of_date) AS as_of_date
   FROM `${catalog}`.`${gold_schema}`.`talent_watchlist`
-),
-latest_performance AS (
-  SELECT *
-  FROM `${catalog}`.`${gold_schema}`.`fact_performance`
-  QUALIFY row_number() OVER (
-    PARTITION BY employee_id
-    ORDER BY review_date DESC, review_id DESC
-  ) = 1
-),
-latest_compensation AS (
-  SELECT *
-  FROM `${catalog}`.`${gold_schema}`.`fact_compensation`
-  QUALIFY row_number() OVER (
-    PARTITION BY employee_id
-    ORDER BY effective_date DESC, compensation_id DESC
-  ) = 1
 )
 SELECT
   worker.employee_id,
@@ -93,39 +77,34 @@ SELECT
   job.licensed_role_flag,
   job.strategic_role_flag,
   job.genai_exposure_tier,
-  performance.review_id,
-  performance.review_date,
-  performance.performance_rating,
-  performance.rating_numeric,
-  performance.potential_rating,
-  coalesce(performance.top_rating_flag, false) AS top_rating_flag,
-  coalesce(performance.high_potential_flag, false) AS high_potential_flag,
-  performance.demonstrated_skills,
-  compensation.compensation_id,
-  compensation.effective_date AS compensation_effective_date,
-  compensation.pay_position_to_midpoint,
-  compensation.pay_position_band,
-  compensation.below_band_midpoint_flag,
+  talent.review_id,
+  talent.review_date,
+  talent.performance_rating,
+  talent.rating_numeric,
+  talent.potential_rating,
+  coalesce(talent.top_rating_flag, false) AS top_rating_flag,
+  coalesce(talent.high_potential_flag, false) AS high_potential_flag,
+  talent.demonstrated_skills,
+  talent.compensation_id,
+  talent.compensation_effective_date,
+  talent.pay_position_to_midpoint,
+  talent.pay_position_band,
+  talent.below_band_midpoint_flag,
   watchlist.employee_id IS NOT NULL AS watchlist_flag,
   coalesce(watchlist.risk_flags, CAST(array() AS ARRAY<STRING>)) AS risk_flags,
   coalesce(watchlist.reasons, CAST(array() AS ARRAY<STRING>)) AS risk_reasons,
-  coalesce(performance.top_rating_flag, false)
-    AND coalesce(compensation.below_band_midpoint_flag, false)
-    AND datediff(bounds.as_of_date, worker.hire_date) >= 1095
-    AND (
-      worker.last_promotion_date IS NULL
-      OR worker.last_promotion_date < add_months(bounds.as_of_date, -36)
-    ) AS stalled_high_performer_flag
+  coalesce(
+    array_contains(watchlist.risk_flags, 'stalled_high_performer'),
+    false
+  ) AS stalled_high_performer_flag
 FROM `${catalog}`.`${gold_schema}`.`dim_worker` AS worker
 INNER JOIN `${catalog}`.`${gold_schema}`.`dim_org` AS org
   ON worker.org_unit_id = org.org_unit_id
 INNER JOIN `${catalog}`.`${gold_schema}`.`dim_job` AS job
   ON worker.job_code = job.job_code
 CROSS JOIN snapshot_as_of AS bounds
-LEFT JOIN latest_performance AS performance
-  ON worker.employee_id = performance.employee_id
-LEFT JOIN latest_compensation AS compensation
-  ON worker.employee_id = compensation.employee_id
+LEFT JOIN latest_talent AS talent
+  ON worker.employee_id = talent.employee_id
 LEFT JOIN `${catalog}`.`${gold_schema}`.`talent_watchlist` AS watchlist
   ON worker.employee_id = watchlist.employee_id
 WHERE worker.employment_status = 'Active';

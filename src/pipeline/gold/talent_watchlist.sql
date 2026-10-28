@@ -54,41 +54,6 @@ current_employees AS (
   CROSS JOIN as_of AS bounds
   WHERE worker.employment_status = 'Active'
 ),
-latest_performance AS (
-  SELECT
-    employee_id,
-    top_rating_flag
-  FROM `${catalog}`.`${gold_schema}`.`fact_performance`
-  QUALIFY row_number() OVER (
-    PARTITION BY employee_id
-    ORDER BY review_date DESC, review_id DESC
-  ) = 1
-),
-latest_compensation AS (
-  SELECT
-    employee_id,
-    below_band_midpoint_flag
-  FROM `${catalog}`.`${gold_schema}`.`fact_compensation`
-  QUALIFY row_number() OVER (
-    PARTITION BY employee_id
-    ORDER BY effective_date DESC, compensation_id DESC
-  ) = 1
-),
-stalled_high_performers AS (
-  SELECT employee.employee_id
-  FROM current_employees AS employee
-  INNER JOIN latest_performance AS performance
-    ON employee.employee_id = performance.employee_id
-  INNER JOIN latest_compensation AS compensation
-    ON employee.employee_id = compensation.employee_id
-  WHERE performance.top_rating_flag
-    AND compensation.below_band_midpoint_flag
-    AND datediff(employee.as_of_date, employee.hire_date) >= 1095
-    AND (
-      employee.last_promotion_date IS NULL
-      OR employee.last_promotion_date < add_months(employee.as_of_date, -36)
-    )
-),
 engagement_ranked AS (
   SELECT
     employee_id,
@@ -222,7 +187,13 @@ hard_to_fill_job_families AS (
 base_signals AS (
   SELECT
     employee.*,
-    stalled.employee_id IS NOT NULL AS stalled_high_performer_flag,
+    coalesce(talent.top_rating_flag, false)
+      AND coalesce(talent.below_band_midpoint_flag, false)
+      AND datediff(employee.as_of_date, employee.hire_date) >= 1095
+      AND (
+        employee.last_promotion_date IS NULL
+        OR employee.last_promotion_date < add_months(employee.as_of_date, -36)
+      ) AS stalled_high_performer_flag,
     disengaging.employee_id IS NOT NULL AS disengaging_flag,
     coalesce(disengaging.consecutive_decline_flag, false)
       AS consecutive_engagement_decline_flag,
@@ -233,8 +204,8 @@ base_signals AS (
     family.average_time_to_fill_days,
     family.median_job_family_fill_days
   FROM current_employees AS employee
-  LEFT JOIN stalled_high_performers AS stalled
-    ON employee.employee_id = stalled.employee_id
+  LEFT JOIN latest_talent AS talent
+    ON employee.employee_id = talent.employee_id
   LEFT JOIN disengaging_employees AS disengaging
     ON employee.employee_id = disengaging.employee_id
   LEFT JOIN teams_at_risk AS team

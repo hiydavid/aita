@@ -309,6 +309,44 @@ SELECT
   base_salary < band_mid AS below_band_midpoint_flag
 FROM `${catalog}`.`${silver_schema}`.`compensation`;
 
+CREATE OR REFRESH PRIVATE MATERIALIZED VIEW latest_talent
+COMMENT 'Pipeline-private latest performance and compensation records at one row per employee.'
+AS
+WITH latest_performance AS (
+  SELECT *
+  FROM `${catalog}`.`${gold_schema}`.`fact_performance`
+  QUALIFY row_number() OVER (
+    PARTITION BY employee_id
+    ORDER BY review_date DESC, review_id DESC
+  ) = 1
+),
+latest_compensation AS (
+  SELECT *
+  FROM `${catalog}`.`${gold_schema}`.`fact_compensation`
+  QUALIFY row_number() OVER (
+    PARTITION BY employee_id
+    ORDER BY effective_date DESC, compensation_id DESC
+  ) = 1
+)
+SELECT
+  coalesce(performance.employee_id, compensation.employee_id) AS employee_id,
+  performance.review_id,
+  performance.review_date,
+  performance.performance_rating,
+  performance.rating_numeric,
+  performance.potential_rating,
+  performance.top_rating_flag,
+  performance.high_potential_flag,
+  performance.demonstrated_skills,
+  compensation.compensation_id,
+  compensation.effective_date AS compensation_effective_date,
+  compensation.pay_position_to_midpoint,
+  compensation.pay_position_band,
+  compensation.below_band_midpoint_flag
+FROM latest_performance AS performance
+FULL OUTER JOIN latest_compensation AS compensation
+  ON performance.employee_id = compensation.employee_id;
+
 CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`fact_requisition` (
   requisition_id STRING COMMENT 'Stable identifier for the job requisition.',
   job_code STRING COMMENT 'Requisition job code joining to dim_job.',

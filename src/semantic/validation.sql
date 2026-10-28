@@ -16,9 +16,6 @@ performance AS (
 compensation AS (
   SELECT * FROM IDENTIFIER(:catalog || '.' || :gold_schema || '.fact_compensation')
 ),
-watchlist AS (
-  SELECT * FROM IDENTIFIER(:catalog || '.' || :gold_schema || '.talent_watchlist')
-),
 workforce AS (
   SELECT * FROM IDENTIFIER(:catalog || '.' || :gold_schema || '.semantic_workforce_monthly')
 ),
@@ -162,14 +159,22 @@ checks AS (
   UNION ALL
 
   SELECT
-    'semantic_talent_snapshot_stalled_watchlist_parity',
+    'semantic_talent_snapshot_stalled_rule_parity',
     count_if(
-      talent.stalled_high_performer_flag
-        <> coalesce(array_contains(watchlist.risk_flags, 'stalled_high_performer'), false)
+      NOT (
+        talent.stalled_high_performer_flag <=> coalesce(
+          coalesce(talent.top_rating_flag, false)
+            AND coalesce(talent.below_band_midpoint_flag, false)
+            AND datediff(talent.as_of_date, talent.hire_date) >= 1095
+            AND (
+              talent.last_promotion_date IS NULL
+              OR talent.last_promotion_date < add_months(talent.as_of_date, -36)
+            ),
+          false
+        )
+      )
     )
   FROM talent
-  LEFT JOIN watchlist
-    ON talent.employee_id = watchlist.employee_id
 
   UNION ALL
 

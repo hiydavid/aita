@@ -65,12 +65,14 @@ engagement_ranked AS (
     ) AS recency_rank
   FROM `${catalog}`.`${gold_schema}`.`fact_engagement`
 ),
-recent_engagement AS (
+disengaging_employees AS (
   SELECT
     employee_id,
-    max(CASE WHEN recency_rank = 1 THEN engagement_score END) AS latest_score,
-    max(CASE WHEN recency_rank = 2 THEN engagement_score END) AS previous_score,
-    max(CASE WHEN recency_rank = 3 THEN engagement_score END) AS prior_score,
+    max(CASE WHEN recency_rank = 1 THEN engagement_score END)
+      < max(CASE WHEN recency_rank = 2 THEN engagement_score END)
+      AND max(CASE WHEN recency_rank = 2 THEN engagement_score END)
+        < max(CASE WHEN recency_rank = 3 THEN engagement_score END)
+      AS consecutive_decline_flag,
     coalesce(
       max(CASE WHEN recency_rank = 1 THEN burnout_flag END),
       false
@@ -78,19 +80,7 @@ recent_engagement AS (
   FROM engagement_ranked
   WHERE recency_rank <= 3
   GROUP BY employee_id
-),
-disengaging_employees AS (
-  SELECT
-    employee_id,
-    latest_score < previous_score
-      AND previous_score < prior_score AS consecutive_decline_flag,
-    latest_burnout_flag
-  FROM recent_engagement
-  WHERE (
-    latest_score < previous_score
-    AND previous_score < prior_score
-  )
-    OR latest_burnout_flag
+  HAVING consecutive_decline_flag OR latest_burnout_flag
 ),
 headcount_as_of AS (
   SELECT max(month_end) AS workforce_as_of_date
@@ -149,8 +139,6 @@ bank_attrition_threshold AS (
 teams_at_risk AS (
   SELECT
     org.org_unit_id,
-    org.voluntary_exit_count,
-    org.qualifying_exit_count,
     org.voluntary_attrition_rate,
     threshold.voluntary_attrition_rate_threshold
   FROM org_attrition_rates AS org

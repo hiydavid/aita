@@ -8,10 +8,10 @@ Gold governance through orchestration (Phases 5–8), run on profile `genie-work
 |---|---|---|
 | Gold governance | `74640997233422` | Pipeline `baf23f7b-cfd2-421f-b52a-6e1f089cb3fe` |
 | Semantic helpers | | Pipeline `daa262c6-d33b-409c-9af0-5cd6a137059d` |
-| Metric views | Semantic job `427147701482101` | Pipeline `50b9c66a-d2d6-458a-8664-4f5c731317b7` |
-| Orchestration | `aita_pipeline` `1073150973022044`; semantic `269141171180276` | SDP `ca8c43ee-c9ac-4614-b342-a5ee56e78fb6`; Lakebase `e4c38851-fe0d-4004-972a-6f3a0df4d2d1` |
+| Metric views | Semantic job `675414841768481` | Pipeline `50b9c66a-d2d6-458a-8664-4f5c731317b7` |
+| Orchestration | `aita_pipeline` `1094796673508321`; publish task `739156609695933` | SDP `28751948-2568-4f31-b630-60b1dae1ba56`; Lakebase `93830fd4-6225-437d-b7d1-cc26dcb8303e` |
 
-Semantic job `427147701482101` passed all eight publication tasks; the deferred grant issue is unchanged (see Access).
+Semantic job `675414841768481` passed all eight parallel publication tasks; the deferred grant issue is unchanged (see Access).
 
 ## Gold Governance
 
@@ -47,7 +47,7 @@ All 13 checks in `src/semantic/validation.sql` returned zero violations. They co
 - grain, row, movement-field, and regrettable-exit parity for the workforce helper (680 regrettable voluntary exits)
 - talent-snapshot grain and active population
 - latest performance and compensation selection
-- stalled-high-performer parity with the watchlist (969 in both)
+- independent recomputation of the 1095-day and 36-month stalled-high-performer rule (969 flagged, zero violations)
 - grain and explode parity for the talent-skills helper
 
 The snapshot uses Gold business date `2026-12-31`, and the watchlist is unchanged at 3,427 rows. `SHOW CREATE TABLE` confirms `semantic_talent_snapshot.pay_position_to_midpoint` keeps `mask_compensation`; the HR administrator saw 18,839 populated values.
@@ -56,7 +56,7 @@ The snapshot uses Gold business date `2026-12-31`, and the watchlist is unchange
 
 All eight views are registered as `METRIC_VIEW`: `mv_workforce`, `mv_attrition`, `mv_engagement`, `mv_productivity`, `mv_talent`, `mv_talent_skills`, `mv_requisitions`, and `mv_recruiting_funnel`.
 
-After job `427147701482101`, all 12 direct-Gold parity checks passed and canonical `SHOW CREATE TABLE` output was unchanged for all eight views. Coverage includes:
+After job `675414841768481`, `DESCRIBE TABLE EXTENDED` identified all eight outputs as `METRIC_VIEW` with populated YAML, and canonical `SHOW CREATE TABLE` output was byte-identical before and after publication. The previously recorded 12 direct-Gold parity checks remain unchanged. Coverage includes:
 
 - yearly semi-additive headcount and multi-month rates
 - previous-wave engagement
@@ -76,7 +76,7 @@ As `aita_hr_admin`, `mv_talent` returned 18,839 active employees, 2,393 high per
 
 ## Orchestration and Lakebase
 
-All five `aita_pipeline` tasks passed: `generate_data`, `gold_governance`, `sdp_pipeline`, `publish_semantics`, and `sync_lakebase`. The SDP task uses full refresh because the generator replaces complete landing snapshots; this stops repeated runs from appending duplicate files to Bronze, and the run restored the expected 404,028 Bronze rows. Shared grants stay in the separate `aita_apply_semantic_grants` job.
+All five `aita_pipeline` tasks passed in run `1094796673508321`: `generate_data`, `gold_governance`, `sdp_pipeline`, `publish_semantics`, and `sync_lakebase`. The SDP task uses full refresh because the generator replaces complete landing snapshots; this stops repeated runs from appending duplicate files to Bronze, and the run restored the expected 404,028 Bronze rows. Shared grants stay in the separate `aita_apply_semantic_grants` job.
 
 | Lakebase setting | Value |
 |---|---|
@@ -97,7 +97,7 @@ Snapshot mode is required because the source is a materialized view, and trigger
 | Null employee keys | 0 | 0 |
 | Maximum as-of date | 2026-12-31 | 2026-12-31 |
 
-After the final run, the synced table reported `SYNCED_TABLE_ONLINE_NO_PENDING_UPDATE`.
+After Lakebase update `b4c404cc-2ec0-4f38-87ff-32bc05afbdb6`, the synced table reported `SYNCED_TABLE_ONLINE_NO_PENDING_UPDATE`.
 
 ## Genie Agent Authoring
 

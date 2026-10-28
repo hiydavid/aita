@@ -183,19 +183,9 @@ WITH activity_dates AS (
 ),
 date_bounds AS (
   SELECT
-    min(calendar_date) AS minimum_date,
-    max(calendar_date) AS maximum_date
+    make_date(year(min(calendar_date)), 1, 1) AS calendar_start_date,
+    make_date(year(max(calendar_date)) + 1, 12, 31) AS calendar_end_date
   FROM activity_dates
-),
-calendar_bounds AS (
-  SELECT
-    make_date(year(minimum_date), 1, 1) AS calendar_start_date,
-    make_date(year(maximum_date) + 1, 12, 31) AS calendar_end_date
-  FROM date_bounds
-),
-date_spine AS (
-  SELECT explode(sequence(calendar_start_date, calendar_end_date, INTERVAL 1 DAY)) AS calendar_date
-  FROM calendar_bounds
 )
 SELECT
   CAST(date_format(calendar_date, 'yyyyMMdd') AS INT) AS date_key,
@@ -211,4 +201,7 @@ SELECT
   trunc(calendar_date, 'MONTH') AS month_start_date,
   last_day(calendar_date) AS month_end_date,
   dayofweek(calendar_date) IN (1, 7) AS is_weekend
-FROM date_spine;
+FROM date_bounds
+LATERAL VIEW explode(
+  sequence(calendar_start_date, calendar_end_date, INTERVAL 1 DAY)
+) AS calendar_date;

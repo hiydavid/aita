@@ -39,6 +39,30 @@ JOB_PREFIXES = ["CON", "WEA", "COM", "OPS", "TEC", "COR"]
 CONTACT_CENTER_ORGS = (0, 1)
 FRAUD_OPS_ORGS = (36, 37)
 STANDOUT_ORGS = (10, 11, 38)
+LOCATIONS = ["Phoenix", "Tampa", "New York", "Chicago", "Dallas", "San Francisco"]
+
+ORDINARY_EXIT_REASON_COMMENTS = [
+    (
+        "compensation",
+        "My compensation fell behind comparable banking roles, so I accepted a better offer.",
+    ),
+    (
+        "manager",
+        "I wanted clearer priorities, more consistent coaching, and stronger support from my manager.",
+    ),
+    (
+        "career growth",
+        "I could not see a timely path to promotion or broader responsibilities.",
+    ),
+    (
+        "relocation",
+        "I am relocating outside the bank's current operating footprint.",
+    ),
+    (
+        "other",
+        "I am leaving for a combination of personal priorities and a different opportunity.",
+    ),
+]
 
 JOB_TITLES = [
     "Contact Center Representative",
@@ -164,8 +188,8 @@ def fake_person(worker_indexes: pd.Series) -> pd.DataFrame:
 
     first_names: list[str] = []
     last_names: list[str] = []
+    fake = Faker("en_US")
     for worker_index in worker_indexes:
-        fake = Faker("en_US")
         fake.seed_instance(DEFAULT_SEED + int(worker_index))
         first_names.append(fake.first_name())
         last_names.append(fake.last_name())
@@ -193,41 +217,46 @@ def build_jobs(spark: SparkSession) -> DataFrame:
     line_index = F.floor(job_index / F.lit(10)).cast("int")
     role_index = F.pmod(job_index, F.lit(10)).cast("int")
     job_title = array_item(JOB_TITLES, job_index)
+    lower_job_title = F.lower(job_title)
     job_code = job_code_expr(line_index, role_index + F.lit(1))
     licensed_role = ((line_index == 1) & (role_index <= 2)) | (
         (line_index == 0) & (role_index == 8)
     )
-    strategic_role = ((line_index == 4) & (role_index <= 4)) | (
+    automatable_operations_role = (line_index == 3) & (role_index <= 2)
+    contact_center_role = (line_index == 0) & (role_index <= 1)
+    technology_role = line_index == 4
+    strategic_technology_role = technology_role & (role_index <= 4)
+    strategic_role = strategic_technology_role | (
         (line_index == 3) & role_index.isin(7, 8)
     )
     genai_exposure = (
-        F.when((line_index == 3) & (role_index <= 2), F.lit("high"))
-        .when((line_index == 0) & (role_index <= 1), F.lit("high"))
-        .when((line_index == 4) & (role_index <= 4), F.lit("medium"))
+        F.when(automatable_operations_role, F.lit("high"))
+        .when(contact_center_role, F.lit("high"))
+        .when(strategic_technology_role, F.lit("medium"))
         .otherwise(F.lit("low"))
     )
     description = (
         F.when(
-            (line_index == 3) & (role_index <= 2),
+            automatable_operations_role,
             F.concat(
                 F.lit("Process high-volume banking operations using rules, document review, and repetitive case decisions. Generative AI and workflow automation can augment this "),
-                F.lower(job_title),
+                lower_job_title,
                 F.lit(" role; adjacent skills include SQL, data quality, controls, and customer judgment."),
             ),
         )
         .when(
-            (line_index == 0) & (role_index <= 1),
+            contact_center_role,
             F.concat(
                 F.lit("Resolve customer requests across phone and chat using scripted knowledge, summarization, and case routing. Generative AI can augment this "),
-                F.lower(job_title),
+                lower_job_title,
                 F.lit(" role while empathy and escalation judgment remain essential."),
             ),
         )
         .when(
-            line_index == 4,
+            technology_role,
             F.concat(
                 F.lit("Design and deliver secure banking technology as a "),
-                F.lower(job_title),
+                lower_job_title,
                 F.lit(" using data, cloud platforms, software engineering, AI governance, and measurable product outcomes."),
             ),
         )
@@ -235,14 +264,14 @@ def build_jobs(spark: SparkSession) -> DataFrame:
             licensed_role,
             F.concat(
                 F.lit("Advise clients as a "),
-                F.lower(job_title),
+                lower_job_title,
                 F.lit(" while maintaining required licenses, fiduciary standards, relationship trust, and regulatory compliance."),
             ),
         )
         .otherwise(
             F.concat(
                 F.lit("Deliver banking outcomes as a "),
-                F.lower(job_title),
+                lower_job_title,
                 F.lit(" through customer focus, risk discipline, collaboration, and continuous improvement."),
             )
         )
@@ -311,7 +340,7 @@ def build_org_units(spark: SparkSession) -> DataFrame:
                 F.pmod(unit_index, F.lit(4)).cast("int"),
             ).alias("region"),
             array_item(
-                ["Phoenix", "Tampa", "New York", "Chicago", "Dallas", "San Francisco"],
+                LOCATIONS,
                 F.pmod(org_index, F.lit(6)).cast("int"),
             ).alias("location"),
             F.concat(F.lit("BL"), F.format_string("%02d", line_index + F.lit(1))).alias(
@@ -356,9 +385,10 @@ def build_workers(spark: SparkSession, worker_count: int, seed: int) -> tuple[Da
         (stable_mod(seed, 5_110, 1, worker_index) + F.lit(365)).cast("int"),
     )
     target_manager = manager_id.isin("EMP000001", "EMP000073", "EMP000002")
+    target_contact_center = contact_center & target_manager
     exit_fraction = stable_fraction(seed, 2, worker_index)
     exits = (
-        F.when(contact_center & target_manager, exit_fraction < F.lit(0.48))
+        F.when(target_contact_center, exit_fraction < F.lit(0.48))
         .when(contact_center, exit_fraction < F.lit(0.10))
         .when(standout_team, exit_fraction < F.lit(0.012))
         .otherwise(exit_fraction < F.lit(0.055))
@@ -372,7 +402,7 @@ def build_workers(spark: SparkSession, worker_count: int, seed: int) -> tuple[Da
     )
     termination_date = F.when(
         exits,
-        F.when(contact_center & target_manager, planted_exit_date).otherwise(ordinary_exit_date),
+        F.when(target_contact_center, planted_exit_date).otherwise(ordinary_exit_date),
     )
     strategic_technology = (line_index == 4) & (role_index <= 3)
     stalled_high_performer = strategic_technology & (
@@ -411,28 +441,30 @@ def build_workers(spark: SparkSession, worker_count: int, seed: int) -> tuple[Da
         )
     )
     workers_with_person = workers_core.withColumn("person", fake_person(F.col("worker_index")))
-    workers = workers_with_person.select(
-        "worker_id",
-        F.col("person.first_name").alias("first_name"),
-        F.col("person.last_name").alias("last_name"),
+    gender_fraction = stable_fraction(seed, 10, F.col("worker_index"))
+    email = F.concat(
         F.lower(
             F.concat_ws(
                 ".",
                 F.regexp_replace(F.col("person.first_name"), "[^A-Za-z]", ""),
                 F.regexp_replace(F.col("person.last_name"), "[^A-Za-z]", ""),
             )
-        )
-        .substr(F.lit(1), F.lit(48))
-        .alias("email_local_part"),
+        ).substr(F.lit(1), F.lit(48)),
+        F.lit("@fictionalbank.example"),
+    )
+    workers = workers_with_person.select(
+        "worker_id",
+        F.col("person.first_name").alias("first_name"),
+        F.col("person.last_name").alias("last_name"),
         F.date_sub(
             F.col("hire_date"),
             (stable_mod(seed, 14_600, 9, F.col("worker_index")) + F.lit(6_570)).cast("int"),
         ).alias("birth_date"),
         array_item(
             ["Female", "Male", "Non-binary", "Prefer not to say"],
-            F.when(stable_fraction(seed, 10, F.col("worker_index")) < 0.48, F.lit(0))
-            .when(stable_fraction(seed, 10, F.col("worker_index")) < 0.94, F.lit(1))
-            .when(stable_fraction(seed, 10, F.col("worker_index")) < 0.98, F.lit(2))
+            F.when(gender_fraction < 0.48, F.lit(0))
+            .when(gender_fraction < 0.94, F.lit(1))
+            .when(gender_fraction < 0.98, F.lit(2))
             .otherwise(F.lit(3)),
         ).alias("gender"),
         "hire_date",
@@ -445,14 +477,13 @@ def build_workers(spark: SparkSession, worker_count: int, seed: int) -> tuple[Da
         "manager_id",
         "business_line",
         array_item(
-            ["Phoenix", "Tampa", "New York", "Chicago", "Dallas", "San Francisco"],
+            LOCATIONS,
             F.pmod(F.col("org_index"), F.lit(6)).cast("int"),
         ).alias("location"),
         F.when(stable_fraction(seed, 11, F.col("worker_index")) < 0.92, "Full Time")
         .otherwise("Part Time")
         .alias("worker_type"),
-    ).withColumn("email", F.concat(F.col("email_local_part"), F.lit("@fictionalbank.example"))).drop(
-        "email_local_part"
+        email.alias("email"),
     )
     return workers_core, workers
 
@@ -557,18 +588,17 @@ def build_job_history(workers_core: DataFrame, seed: int) -> DataFrame:
         F.lit("Organization change"),
         previous_manager_id=prior_manager_id,
     )
+    target_contact_center = F.col("contact_center_flag") & F.col("target_manager_flag")
     exit_events = event_rows(
         "EXIT",
         F.col("termination_date"),
         F.col("termination_date").isNotNull(),
         F.when(
-            F.col("contact_center_flag") & F.col("target_manager_flag"),
+            target_contact_center,
             "Schedule and workload following operating model change",
         ).otherwise("Standard employee departure"),
         before_termination=False,
-        termination_type=F.when(
-            F.col("contact_center_flag") & F.col("target_manager_flag"), "Voluntary"
-        )
+        termination_type=F.when(target_contact_center, "Voluntary")
         .when(stable_fraction(seed, 15, F.col("worker_index")) < 0.72, "Voluntary")
         .otherwise("Involuntary"),
     )
@@ -661,29 +691,20 @@ def build_engagement_surveys(
 
 def build_exit_interviews(workers_core: DataFrame, seed: int) -> DataFrame:
     ordinary_reason_index = stable_mod(seed, 5, 17, F.col("worker_index")).cast("int")
-    stated_reason = (
-        F.when(
-            F.col("contact_center_flag") & F.col("target_manager_flag"),
-            "schedule and workload",
-        )
-        .otherwise(
-            array_item(
-                ["compensation", "manager", "career growth", "relocation", "other"],
-                ordinary_reason_index,
-            )
-        )
+    ordinary_reason = array_item(
+        [reason for reason, _ in ORDINARY_EXIT_REASON_COMMENTS], ordinary_reason_index
     )
-    comment = (
-        F.when(
-            F.col("contact_center_flag") & F.col("target_manager_flag"),
-            "The schedule change created unpredictable shifts and an unsustainable workload. My manager could not provide flexibility, so I accepted another role.",
-        )
-        .when(stated_reason == "compensation", "My compensation fell behind comparable banking roles, so I accepted a better offer.")
-        .when(stated_reason == "manager", "I wanted clearer priorities, more consistent coaching, and stronger support from my manager.")
-        .when(stated_reason == "career growth", "I could not see a timely path to promotion or broader responsibilities.")
-        .when(stated_reason == "relocation", "I am relocating outside the bank's current operating footprint.")
-        .otherwise("I am leaving for a combination of personal priorities and a different opportunity.")
+    ordinary_comment = array_item(
+        [comment for _, comment in ORDINARY_EXIT_REASON_COMMENTS], ordinary_reason_index
     )
+    target_contact_center = F.col("contact_center_flag") & F.col("target_manager_flag")
+    stated_reason = F.when(target_contact_center, "schedule and workload").otherwise(
+        ordinary_reason
+    )
+    comment = F.when(
+        target_contact_center,
+        "The schedule change created unpredictable shifts and an unsustainable workload. My manager could not provide flexibility, so I accepted another role.",
+    ).otherwise(ordinary_comment)
     return workers_core.where(F.col("termination_date").isNotNull()).select(
         F.concat(F.lit("EXIT-"), F.col("worker_id")).alias("exit_interview_id"),
         "worker_id",
@@ -802,8 +823,7 @@ def build_performance_reviews(
         "manager_id",
         rating.alias("performance_rating"),
         rating_numeric.alias("rating_numeric"),
-        F.when(F.col("stalled_high_performer_flag"), "High")
-        .when(rating_numeric == 5, "High")
+        F.when(rating_numeric == 5, "High")
         .when(rating_numeric >= 4, "Medium")
         .otherwise("Developing")
         .alias("potential_rating"),
@@ -963,7 +983,6 @@ def build_applications(requisitions: DataFrame, spark: SparkSession, seed: int) 
                 "requisition_index",
                 "requisition_id",
                 "job_code",
-                "org_unit_id",
                 "open_date",
                 "status",
                 "licensed_role_flag",
@@ -1111,22 +1130,20 @@ def build_application_events(applications: DataFrame, seed: int) -> DataFrame:
     )
 
 
-def write_csv(dataframe: DataFrame, landing_path: str, dataset: str, partitions: int) -> None:
-    (
-        dataframe.repartition(partitions)
-        .write.mode("overwrite")
-        .option("header", "true")
-        .option("dateFormat", "yyyy-MM-dd")
-        .csv(f"{landing_path}/{dataset}")
-    )
-    print(f"Wrote CSV dataset: {dataset}")
-
-
-def write_json(dataframe: DataFrame, landing_path: str, dataset: str, partitions: int) -> None:
-    dataframe.repartition(partitions).write.mode("overwrite").json(
-        f"{landing_path}/{dataset}"
-    )
-    print(f"Wrote JSON dataset: {dataset}")
+def write_dataset(
+    dataframe: DataFrame,
+    landing_path: str,
+    dataset: str,
+    partitions: int,
+    fmt: str,
+) -> None:
+    writer = dataframe.repartition(partitions).write.mode("overwrite")
+    if fmt == "csv":
+        writer = writer.option("header", "true").option("dateFormat", "yyyy-MM-dd")
+    elif fmt != "json":
+        raise ValueError(f"Unsupported dataset format: {fmt}")
+    writer.format(fmt).save(f"{landing_path}/{dataset}")
+    print(f"Wrote {fmt.upper()} dataset: {dataset}")
 
 
 def main() -> None:
@@ -1153,18 +1170,22 @@ def main() -> None:
     applications = build_applications(requisitions, spark, args.seed)
     application_events = build_application_events(applications, args.seed)
 
-    write_csv(workers, args.landing_path, "workers", 8)
-    write_csv(job_history, args.landing_path, "job_history", 8)
-    write_csv(org_units, args.landing_path, "org_units", 1)
-    write_json(jobs, args.landing_path, "jobs", 1)
-    write_json(engagement_surveys, args.landing_path, "engagement_surveys", 16)
-    write_json(exit_interviews, args.landing_path, "exit_interviews", 4)
-    write_csv(team_productivity, args.landing_path, "team_productivity", 4)
-    write_json(performance_reviews, args.landing_path, "performance_reviews", 8)
-    write_csv(compensation, args.landing_path, "compensation", 8)
-    write_csv(requisitions.drop("requisition_index"), args.landing_path, "requisitions", 4)
-    write_json(applications.drop("application_index"), args.landing_path, "applications", 8)
-    write_csv(application_events, args.landing_path, "application_events", 16)
+    datasets = [
+        (workers, "workers", 8, "csv"),
+        (job_history, "job_history", 8, "csv"),
+        (org_units, "org_units", 1, "csv"),
+        (jobs, "jobs", 1, "json"),
+        (engagement_surveys, "engagement_surveys", 16, "json"),
+        (exit_interviews, "exit_interviews", 4, "json"),
+        (team_productivity, "team_productivity", 4, "csv"),
+        (performance_reviews, "performance_reviews", 8, "json"),
+        (compensation, "compensation", 8, "csv"),
+        (requisitions.drop("requisition_index"), "requisitions", 4, "csv"),
+        (applications.drop("application_index"), "applications", 8, "json"),
+        (application_events, "application_events", 16, "csv"),
+    ]
+    for dataframe, dataset, partitions, fmt in datasets:
+        write_dataset(dataframe, args.landing_path, dataset, partitions, fmt)
     print(f"Generation complete: seed={args.seed}, workers={args.worker_count}")
 
 

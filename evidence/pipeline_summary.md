@@ -1,6 +1,6 @@
 # Pipeline Evidence
 
-Synthetic generation through Gold, run October 24–25, 2026 on profile `genie-workbench` and bundle target `dev`. Every check below passed.
+Synthetic generation through Gold, run October 24–27, 2026 on profile `genie-workbench` and bundle target `dev`. Every check below passed.
 
 ## Runs
 
@@ -15,10 +15,13 @@ Synthetic generation through Gold, run October 24–25, 2026 on profile `genie-w
 | Gold facts | `24365280429776` | `9f70c7ed-566a-4fc9-8793-de4d05e54ec5` |
 | Talent watchlist | `618778647851719` | `30cecb4b-3be0-4180-9d69-8c79bc38fe14` |
 | Gold worker-version refactor | | `a40a2324-758c-4fb8-a0e5-4b5ce27054f4` |
+| Post-simplification verification | `73023870029445` | `b0b789ed-a8e2-40b8-a3dc-da9c0315844b` |
 
 ## Row Reconciliation
 
 Generator seed `20261024`. Landing and Bronze counts match for every dataset.
+
+Bronze `workers`, `org_units`, and `requisitions` each contain exactly the six canonical business-line values; the simplified Silver casing does not alter the generated data.
 
 | Dataset | Landing = Bronze | Silver table | Silver rows |
 |---|---:|---|---:|
@@ -118,7 +121,7 @@ Resolved issues behind the current design:
 | `fact_requisition` | 2,400 | requisition |
 | `fact_application_funnel` | 28,800 | application |
 
-All 12 tables have zero duplicate or null keys and zero source-count differences; 19 fact-to-dimension checks found zero orphan keys. Updates `a40a2324-758c-4fb8-a0e5-4b5ce27054f4` (`worker_versions`) and `84990991-4115-4097-9d9c-6d01e74bfe77` (`latest_talent`) retained exact counts, grains, and dual fingerprints; all 13 semantic and relevant metric checks passed.
+All 12 tables have zero duplicate or null keys and zero source-count differences; 19 fact-to-dimension checks found zero orphan keys. Updates `a40a2324-758c-4fb8-a0e5-4b5ce27054f4` (`worker_versions`) and `84990991-4115-4097-9d9c-6d01e74bfe77` (`latest_talent`) retained exact counts, grains, and dual fingerprints. Full update `28751948-2568-4f31-b630-60b1dae1ba56` in job `1094796673508321` compiled the simplified date, attrition, recruiting, and watchlist SQL. `dim_date`, `fact_attrition_event`, and `talent_watchlist` retained exact counts and dual fingerprints; both recruiting duration expressions had zero mismatches before and after the refresh, and all 13 semantic checks passed.
 
 - Headcount: 24 months, 2024-10 through 2026-09, derived from `team_productivity`; September 2026 month-end headcount is 18,839; 1,161 exits, 884 voluntary; zero empty cells.
 - Temporal joins use half-open SCD Type 2 intervals. The single zero-length history version is excluded from interval scans, and its manager-change event is still counted.

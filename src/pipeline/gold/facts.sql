@@ -127,16 +127,6 @@ CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`fact_attritio
 CLUSTER BY (exit_date, org_unit_id)
 COMMENT 'One row per voluntary or involuntary exit with departure context, AI-classified exit signals, and a latest-review regrettable flag. Used for attrition analysis.'
 AS
-WITH latest_performance AS (
-  SELECT
-    worker_id AS employee_id,
-    rating_numeric
-  FROM `${catalog}`.`${silver_schema}`.`performance_enriched`
-  QUALIFY row_number() OVER (
-    PARTITION BY worker_id
-    ORDER BY review_date DESC, review_id DESC
-  ) = 1
-)
 SELECT
   history.event_id AS attrition_event_id,
   history.worker_id AS employee_id,
@@ -160,14 +150,14 @@ SELECT
   interview.exit_reason,
   interview.exit_sentiment,
   interview.would_rehire,
-  coalesce(performance.rating_numeric >= 4, false) AS regrettable_flag
+  coalesce(talent.rating_numeric >= 4, false) AS regrettable_flag
 FROM `${catalog}`.`${silver_schema}`.`worker_history` AS history
 INNER JOIN `${catalog}`.`${silver_schema}`.`jobs_enriched` AS job
   ON history.job_code = job.job_code
 LEFT JOIN `${catalog}`.`${silver_schema}`.`exit_interviews_enriched` AS interview
   ON history.worker_id = interview.worker_id
-LEFT JOIN latest_performance AS performance
-  ON history.worker_id = performance.employee_id
+LEFT JOIN latest_talent AS talent
+  ON history.worker_id = talent.employee_id
 WHERE history.event_type = 'EXIT';
 
 CREATE OR REFRESH MATERIALIZED VIEW `${catalog}`.`${gold_schema}`.`fact_engagement` (
@@ -468,7 +458,9 @@ WITH stage_events AS (
     ) AS outcome_date,
     max(
       CASE WHEN stage IN ('Hired', 'Declined', 'Rejected') THEN stage END
-    ) AS outcome_stage
+    ) AS outcome_stage,
+    coalesce(offer_date, interview_date, screen_date, applied_event_date)
+      AS latest_reached_date
   FROM `${catalog}`.`${silver_schema}`.`application_events`
   GROUP BY application_id
 )
@@ -501,21 +493,10 @@ SELECT
   datediff(stage.offer_date, stage.interview_date) AS days_interview_to_offer,
   datediff(
     stage.outcome_date,
-    coalesce(
-      stage.offer_date,
-      stage.interview_date,
-      stage.screen_date,
-      stage.applied_event_date
-    )
+    stage.latest_reached_date
   ) AS days_last_stage_to_outcome,
   datediff(
-    coalesce(
-      stage.outcome_date,
-      stage.offer_date,
-      stage.interview_date,
-      stage.screen_date,
-      stage.applied_event_date
-    ),
+    coalesce(stage.outcome_date, stage.latest_reached_date),
     stage.applied_event_date
   ) AS days_in_funnel,
   application.decline_reason,

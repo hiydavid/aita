@@ -129,7 +129,6 @@ export function WatchlistTable({
                       <TableHead>Employee</TableHead>
                       <TableHead>Business line</TableHead>
                       <TableHead>Flags</TableHead>
-                      <TableHead>Reasons</TableHead>
                       <TableHead>Review</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -147,13 +146,6 @@ export function WatchlistTable({
                               </Badge>
                             ))}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <ul className="min-w-80 list-disc space-y-1 pl-4 text-sm">
-                            {item.reasons.map((reason) => (
-                              <li key={reason}>{reason}</li>
-                            ))}
-                          </ul>
                         </TableCell>
                         <TableCell>
                           <WatchlistReviewCell item={item} />

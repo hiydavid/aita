@@ -65,6 +65,14 @@ export function WatchlistReviewDialog({ item, statuses, onClose, onReview }: Wat
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
+            <Label>Reasons for review</Label>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              {item.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="review-status">Status</Label>
             <Select value={status} onValueChange={(value) => isReviewStatus(value) && setStatus(value)}>
               <SelectTrigger id="review-status" aria-label="Updated review status">

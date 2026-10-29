@@ -33,17 +33,34 @@ Aita connects workforce, talent, and recruiting signals before they create servi
 | Path | Contents |
 |---|---|
 | `databricks.yml`, `resources/` | Bundle variables, the `aita_sdp` pipeline, and jobs |
-| `src/generate/` | Deterministic synthetic-data generator and planted-pattern checks |
-| `src/setup/gold_governance.sql` | Compensation mask function created before the pipeline runs |
-| `src/pipeline/` | SDP SQL for Bronze, Silver, Gold, and semantic helper views |
-| `src/semantic/` | Metric views, Unity Catalog grants, and semantic validation SQL |
-| `src/genie/` | Parsed version-2 Genie Agent configs, benchmark SQL, publication tooling, and Agent-mode evaluation |
-| `src/app/aita/` | AppKit owner-only development app, Lakebase thread store, and Chat/Watchlist/History shell |
-| `docs/pipeline_spec.md` | Pipeline datasets, layers, grains, business rules, and Gold governance |
-| `docs/semantics_spec.md` | Semantic helpers, metric definitions, Genie Agents, access, and evaluation |
-| `docs/progress.md` | Phase status and next steps |
+| `src/generate/` | Synthetic-data generator and pattern checks |
+| `src/setup/gold_governance.sql` | Pre-pipeline compensation mask |
+| `src/pipeline/` | Bronze, Silver, Gold, and semantic SDP SQL |
+| `src/semantic/` | Metric views, grants, and validation SQL |
+| `src/genie/` | Version-2 Agent configs, benchmark SQL, publication, and evaluation |
+| `src/app/aita/` | AppKit app, Lakebase stores, and Chat/Watchlist/History shell |
 | `evidence/` | Run summaries and raw execution output |
-| `AGENTS.md` | Contributor and coding-agent rules |
+
+## Reviewer Path
+
+Read these 15 files in order for the architecture, executable path, governance, and proof:
+Budget: 101 tracked files (95 UTF-8 text, 6 images) and 439,313 text characters; this path is 15 files and 76,068 characters; files over 9,000 characters: none.
+
+1. `README.md`
+2. `databricks.yml`
+3. `resources/aita_pipeline.yml`
+4. `resources/aita_app.app.yml`
+5. `evidence/pipeline_summary.md`
+6. `evidence/semantic_summary.md`
+7. `evidence/run_log.md`
+8. `src/pipeline/bronze/ingest.sql`
+9. `src/pipeline/silver/core.sql`
+10. `src/pipeline/semantic/talent_snapshot.sql`
+11. `src/setup/gold_governance.sql`
+12. `src/semantic/mv_workforce.sql`
+13. `src/genie/agent_config.py`
+14. `src/app/aita/server/agents/aita/agent.ts`
+15. `src/app/aita/shared/routing.ts`
 
 ## Environment
 
@@ -65,7 +82,7 @@ Aita connects workforce, talent, and recruiting signals before they create servi
 | Lakebase sync pipeline | `460f8caf-0187-4590-8ae3-38c306cff78c` | `lakebase_sync_pipeline_id` |
 | Pipeline and job compute | Serverless | |
 
-Catalog, schema, and landing-path values are passed to the SDP pipeline as configuration parameters. Warehouse and Lakebase values configure downstream job tasks. Pipeline SQL must reference parameters rather than hardcoded catalog or schema names.
+Bundle variables parameterize catalogs, schemas, landing paths, warehouse, and Lakebase settings.
 
 ## Resources
 
@@ -79,9 +96,7 @@ Catalog, schema, and landing-path values are passed to the SDP pipeline as confi
 | Talent & Performance Agent | `01f1d23a36c11172bc0d26281179b07c` |
 | Recruiting Agent | `01f1d23c9d7f181cbc32056b828897ad` |
 | Aita development app | `aita-david-huang` (`e4878bfe-f34e-403f-bc96-fdeb5048f3e8`, owner-only) |
-| App orchestrator model | `databricks-claude-haiku-5-5` |
-| Lakebase project | `aita_lakebase` (`projects/aita-lakebase`, Postgres 17) |
-| Lakebase synced table | `aita_gold.talent_watchlist_serving` |
+| App orchestrator | `databricks-claude-haiku-5-5` |
 
 ## Commands
 
@@ -99,7 +114,7 @@ Catalog, schema, and landing-path values are passed to the SDP pipeline as confi
 - Publish only after configuration review and explicit approval: `python3 src/genie/manage_agents.py publish workforce_attrition --profile genie-workbench --warehouse-id 813b0ad2f3036e46 --catalog genie_workbench_dev_catalog --gold-schema aita_gold --parent-path /Workspace/Users/<user>/aita/genie --approve-live`
 - Capture Agent-mode SQL and responses: `python3 src/genie/evaluate_agent.py workforce_attrition --space-id <space-id> --profile genie-workbench --output /tmp/aita_workforce_agent_eval.json`
 
-The three Agents use the published metric views as their primary semantic sources. Detail views are attached only for approved employee-level workflows. Agent-mode benchmarks carry response-quality rubrics; separately versioned benchmark SQL supplies read-only ground truth.
+Agents use metric views first; detail views support approved employee workflows. Benchmarks separate response rubrics from read-only SQL ground truth.
 
 ## One-Time Setup
 
@@ -118,7 +133,7 @@ Required privileges: `USE CATALOG` and `CREATE SCHEMA` on the catalog, and `CREA
 
 - Create the `aita_hr_admin` group and assign only approved HR compensation administrators.
 - Run `src/setup/gold_governance.sql` before refreshing the pipeline so `aita_gold.mask_compensation` exists before governed Gold tables compile. The `aita_pipeline` job runs it as the `gold_governance` task.
-- Verify the same compensation query as both a group member and a non-member before publishing metric views, exposing data through Genie, or activating Lakebase sync.
+- Verify the same compensation query as a group member and non-member before semantic publication, Genie access, or Lakebase sync.
 - Provision `aita_users` and `aita_hr_admin` as account-level groups assigned to the workspace, and add only approved users and service principals. Legacy `WorkspaceGroup` principals cannot receive Unity Catalog grants.
 - Semantic grants apply to both groups; only `aita_hr_admin` receives unmasked compensation.
-- If account-level identity administration is unavailable, follow the owner-only constrained demo exception in `docs/semantics_spec.md`.
+- Without account-level identity administration, keep the app owner-only; do not claim shared access or production readiness.

@@ -61,7 +61,7 @@ As `aita_hr_admin`, `mv_talent` returned 18,839 active employees, 2,393 high per
 
 - SQL warehouse `813b0ad2f3036e46` grants explicit `CAN USE` to `aita_users` (`2124487482070223`) and `aita_hr_admin`.
 - `aita_users` contains only the project owner. The owner-only app service principal has Lakebase access but no Unity Catalog grants; Genie executes OBO.
-- Unity Catalog grants are deferred. Both groups report `resourceType: WorkspaceGroup`, and Unity Catalog returns `PRINCIPAL_DOES_NOT_EXIST` for `aita_users`. The demo runs under the owner-only exception in `docs/semantics_spec.md`, with no per-user grant or mask bypass. `src/semantic/grants.sql` is ready to rerun once account-level groups exist.
+- Unity Catalog grants are deferred. Both groups report `resourceType: WorkspaceGroup`, and Unity Catalog returns `PRINCIPAL_DOES_NOT_EXIST` for `aita_users`. The demo stays owner-only, with no per-user grant or mask bypass. `src/semantic/grants.sql` is ready to rerun once account-level groups exist.
 
 ## Orchestration and Lakebase
 

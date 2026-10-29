@@ -104,13 +104,14 @@ Approved metadata repairs fixed the other baseline failures. All three Agents me
 
 ## App Foundation and Routing
 
-- AppKit `0.84.0` app `aita-david-huang` (`e4878bfe-f34e-403f-bc96-fdeb5048f3e8`) is `RUNNING`; deployment `01f1d32b44fc1f9fa32a19db4ed6ac05` succeeded. ACLs remain owner-only with inherited workspace admins.
-- The code-defined router exposes exactly three OBO Genie tools: `workforce_attrition`, `talent_performance`, and `recruiting`. The Haiku 5.5 model and Lakebase run as the app service principal.
-- The OAuth live routing eval passed all 27 assertions: 9/9 canonical questions, three per Agent, completed successfully and matched the exact unique Agent set. Cross-domain and clarification coverage remains deferred to production expansion.
-- Chat streams answers with Agent badges, generated SQL, identity disclosure, partial/error states, and an AI verification note. Follow-ups preserve per-Agent Genie conversation IDs without exposing the context marker.
-- `aita_app.threads`, `messages`, and `turn_metadata` enforce server-derived user ownership and 30-day purge-on-access. The live thread object is updated after each durable message insert so the current turn reaches the model.
-- The app-SP startup check remains 3,427 rows, 3,427 distinct employee IDs, zero null keys, and maximum `as_of_date` `2026-12-31`.
+- AppKit `0.84.0` app `aita-david-huang` is `RUNNING` and `ACTIVE`; owner-only deployment `01f1d32fe1b61d9bbd7533cc29e0fb3a` succeeded.
+- The router exposes exactly three OBO Genie tools. Its OAuth eval passed all 27 assertions: 9/9 canonical questions matched the exact unique Agent set.
+- Chat exposes Agent SQL and identity, preserves per-Agent follow-up IDs, and shows streaming, partial/error, and AI-verification states.
+- Watchlist reads passed live pagination and JSONB filters: 3,427 total, 2,199 disengaging, and 777 Consumer Banking rows. Startup parity remains 3,427 distinct keys, zero null keys, and `as_of_date` `2026-12-31`.
+- History enforces server-derived ownership and 30-day purge-on-access. A temporary thread completed create, continue, four-message replay, delete, and post-delete 404; query and forwarded-header identity spoof attempts still returned only the owner's 46 threads.
 
 ## Final Handoff Check
 
-On October 28, strict bundle validation, app deployment, and live metadata reconciliation passed. The job, pipelines, Agents, warehouse, app resources, and DAG match source control and the IDs above. Counts remain 20,000 workers, 18,839 active talent rows, and 3,427 source/synced/app-served watchlist rows; the final SDP update still has zero expectation or AI-error failures.
+On October 28, strict AppKit and bundle validation, app deployment, and live metadata reconciliation passed. The job, pipelines, Agents, warehouse, app resources, and DAG match source control and the IDs above. Counts remain 20,000 workers, 18,839 active talent rows, and 3,427 source/synced/app-served watchlist rows; the final SDP update still has zero expectation or AI-error failures.
+
+Phase 15 retained the prior 9/9 routing result without rerun. Final read-only smoke confirmed all three SPA routes, owner-only ACLs, unauthenticated 401, three OBO Genie bindings, SP-only Lakebase, 3,427-row fresh parity, 46 owner threads with 30-day retention, identity-spoof isolation, and expected 400/404 validation responses. Shared release and production benchmark expansion remain deferred.

@@ -1,25 +1,10 @@
 import { createBrowserRouter, NavLink, Outlet, RouterProvider } from 'react-router';
 import { useEffect, useState } from 'react';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@databricks/appkit-ui/react';
-import { Clock3, History, Menu, MessageSquareText, Users } from 'lucide-react';
+import { Badge, Button, Sheet, SheetContent, SheetHeader, SheetTitle } from '@databricks/appkit-ui/react';
+import { History, Menu, MessageSquareText, Users } from 'lucide-react';
 import { ChatPage } from './ChatPage';
+import { HistoryPage } from './HistoryPage';
+import { WatchlistPage } from './WatchlistPage';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
@@ -120,63 +105,4 @@ const router = createBrowserRouter([
 
 export default function App() {
   return <RouterProvider router={router} />;
-}
-
-function WatchlistPage() {
-  return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-3xl font-semibold">Talent Watchlist</h2>
-        <p className="text-muted-foreground mt-1">Low-latency reads from the existing Lakebase sync.</p>
-      </div>
-      <Alert>
-        <Users className="h-4 w-4" />
-        <AlertTitle>Human review required</AlertTitle>
-        <AlertDescription>
-          Watchlist flags prompt review and must never be treated as employment decisions.
-        </AlertDescription>
-      </Alert>
-      <Card>
-        <CardContent className="pt-6">
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Clock3 />
-              </EmptyMedia>
-              <EmptyTitle>Serving path connected</EmptyTitle>
-              <EmptyDescription>
-                Filtering, pagination, freshness, and parity checks arrive in Phase 14.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function HistoryPage() {
-  return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-3xl font-semibold">History</h2>
-        <p className="text-muted-foreground mt-1">Private conversation state retained for at most 30 days.</p>
-      </div>
-      <Card>
-        <CardContent className="pt-6">
-          <Empty>
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <History />
-              </EmptyMedia>
-              <EmptyTitle>No conversations yet</EmptyTitle>
-              <EmptyDescription>
-                Lakebase persistence and ownership isolation are wired. Replay and delete UI arrive in Phase 14.
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        </CardContent>
-      </Card>
-    </div>
-  );
 }

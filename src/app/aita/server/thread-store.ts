@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import type { Message, Thread, ThreadStore } from '@databricks/appkit/beta';
-import type { TurnMetadataInput } from '../shared/routing';
 
 type Query = (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
 
@@ -43,20 +42,6 @@ export class LakebaseThreadStore implements ThreadStore {
         UNIQUE (thread_id, turn_index)
       )
     `);
-    await query(`
-      CREATE TABLE IF NOT EXISTS aita_app.turn_metadata (
-        thread_id UUID NOT NULL,
-        turn_index INTEGER NOT NULL,
-        routed_agents TEXT[] NOT NULL DEFAULT '{}',
-        genie_conversation_ids JSONB NOT NULL DEFAULT '{}',
-        generated_sql JSONB NOT NULL DEFAULT '{}',
-        latency_ms INTEGER,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (thread_id, turn_index),
-        FOREIGN KEY (thread_id, turn_index)
-          REFERENCES aita_app.messages(thread_id, turn_index) ON DELETE CASCADE
-      )
-    `);
     await this.purgeExpired();
   }
 
@@ -87,8 +72,13 @@ export class LakebaseThreadStore implements ThreadStore {
     await this.purgeExpired();
     const result = await this.run(
       `WITH next_turn AS (
-         UPDATE aita_app.threads
-         SET next_turn_index = next_turn_index + 1, updated_at = NOW()
+       UPDATE aita_app.threads
+         SET next_turn_index = next_turn_index + 1,
+             title = CASE
+               WHEN next_turn_index = 0 AND $4 = 'user' THEN LEFT($5, 120)
+               ELSE title
+             END,
+             updated_at = NOW()
          WHERE id = $1 AND user_id = $2
          RETURNING next_turn_index - 1 AS turn_index
        )
@@ -123,43 +113,6 @@ export class LakebaseThreadStore implements ThreadStore {
       [threadId, userId]
     );
     if (result.rows.length > 0) this.liveThreads.delete(threadId);
-    return result.rows.length > 0;
-  }
-
-  async saveTurnMetadata(threadId: string, userId: string, metadata: TurnMetadataInput): Promise<boolean> {
-    const result = await this.run(
-      `WITH owned_turn AS (
-         SELECT messages.thread_id, messages.turn_index
-         FROM aita_app.messages AS messages
-         INNER JOIN aita_app.threads AS threads
-           ON threads.id = messages.thread_id
-         WHERE messages.thread_id = $1
-           AND threads.user_id = $2
-           AND messages.role = 'assistant'
-         ORDER BY messages.turn_index DESC
-         LIMIT 1
-       )
-       INSERT INTO aita_app.turn_metadata (
-         thread_id, turn_index, routed_agents, genie_conversation_ids,
-         generated_sql, latency_ms
-       )
-       SELECT thread_id, turn_index, $3::text[], $4::jsonb, $5::jsonb, $6
-       FROM owned_turn
-       ON CONFLICT (thread_id, turn_index) DO UPDATE SET
-         routed_agents = EXCLUDED.routed_agents,
-         genie_conversation_ids = EXCLUDED.genie_conversation_ids,
-         generated_sql = EXCLUDED.generated_sql,
-         latency_ms = EXCLUDED.latency_ms
-       RETURNING turn_index`,
-      [
-        threadId,
-        userId,
-        metadata.routedAgents,
-        JSON.stringify(metadata.genieConversationIds),
-        JSON.stringify(metadata.generatedSql),
-        metadata.latencyMs,
-      ]
-    );
     return result.rows.length > 0;
   }
 

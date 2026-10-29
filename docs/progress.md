@@ -26,6 +26,17 @@ Run IDs, row counts, and check results are in `evidence/pipeline_summary.md` (ge
 | Phase 14: Watchlist and History | Synced-table filtering, pagination, freshness/parity states, Ask Aita, replay, continuation, deletion, 30-day retention, and user-scoped authorization are deployed and verified end to end |
 | Phase 15: Evaluation and handoff | Owner-only release smoke, parity, security, state, deployment, and reviewer-budget checks pass; prior 9/9 routing evidence is retained without rerun |
 
+## Planned: Submission Readiness
+
+| Phase | Scope | Status |
+|---|---|---|
+| Phase 16: Industry framing | `README.md` only: banking problem statement, buyer KPIs, executive sponsor and domain owner, FSI Industry Outcome Map alignment (all figures labeled synthetic), and a concise Design decisions section carrying the rationale that leaves with the untracked specs | Not started |
+| Phase 17: Lakebase review write-back | Append-only `aita_app.watchlist_review_events` (`employee_id`, `as_of_date`, `status`, `note` ≤ 500 chars, server-derived `reviewer`, `created_at`); current status from the latest event; `POST /api/watchlist/:employeeId/review` with enum, length, and current-watchlist validation; status badge, update control, filter, and reviewed count in Watchlist; per-request freshness/parity and bundle-variable synced-table name; validate, deploy to `dev` after approval, verify live; then `/simplify` | Not started |
+| Phase 18: Raw execution evidence | New `evidence/run_log.md` (≤ 9,000 chars) of verbatim, timestamped, command-attributed output: fresh `aita_pipeline` run (after approval), event-log expectations, validation and pattern-check SQL, AI Function input/label samples, mask `DESCRIBE`, Genie `check-sql` and Agent-mode evals, router `appkit agent eval`, Lakebase parity and write-back requests, app state; trim both summary files below 9,000 chars and point them to the run log | Not started |
+| Phase 19: Untrack, reviewer path, budget | Remove tracked references to `docs/` and `AGENTS.md`; back up, then `git rm --cached` and ignore `docs/`, `AGENTS.md`, `.isaac/`, and `.vscode/`; add a ~15-file Reviewer path to `README.md`; report tracked file and character counts and over-limit reviewer-path files; re-run `bundle validate` | Not started |
+
+Open decisions: review statuses are a shared queue visible to all authorized app users (default); Lakebase is not registered in Unity Catalog for Genie (default); spec backup location is required before Phase 19. The project owner commits and makes the repository public.
+
 ## Deferred: Shared Semantic Access
 
 Unity Catalog grants are not applied: `aita_users` and `aita_hr_admin` are legacy workspace-local groups, and no account administrator is available to provision account-level replacements. The demo runs under the owner-only constrained demo exception in `docs/semantics_spec.md` and must not be described as production-ready for shared access.

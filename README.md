@@ -1,6 +1,32 @@
 # Aita
 
-FE Bar project submission. Aita turns 12 synthetic HR datasets for a fictional bank into a governed Gold star schema with Lakeflow Spark Declarative Pipelines, AI Functions, Unity Catalog metric views, Genie Agents, and a Lakebase-synced talent watchlist.
+FE Bar submission. Aita unifies 12 synthetic HR datasets for a fictional bank through Lakeflow pipelines, AI Functions, metric views, Genie Agents, and a Lakebase-served talent watchlist.
+
+## Banking Problem
+
+Aita connects workforce, talent, and recruiting signals before they create service disruption or backfill costs. Governed analysis links attrition, engagement, talent, pay, skills, and hiring. Its rule-based watchlist prompts human review, never employment decisions.
+
+**Synthetic-data disclosure:** The bank, people, dates, scenarios, and all business figures are synthetic. The benchmark covers 20,000 employees, 24 months, and 12 generated datasets; results demonstrate behavior, not real-world impact.
+
+## Buyer Outcomes
+
+- **Executive sponsor:** Chief Human Resources Officer (CHRO).
+- **Domain owner:** Head of Workforce Strategy and People Analytics.
+
+| FSI Industry Outcome Map alignment | Buyer KPIs | Synthetic evidence |
+|---|---|---|
+| Operational efficiency | Attrition, engagement, overtime, backfills, time to fill | 108 contact-center spike exits; fraud engagement down 1.537 points as overtime rose 2.456x |
+| Customer experience | CSAT, handle time, quality, staffing stability | 3 standout managers pair high engagement and CSAT with less than half the bank attrition rate |
+| Workforce transformation | Stalled talent, pay position, internal mobility | 969 stalled high performers; 738 internal applicants pursued adjacent technology work |
+| Risk and responsible AI | Compensation access, metric parity, reviewability, AI traceability | 3 compensation measures stay masked; 3,427 watchlist rows retain reasons and human-review warnings |
+
+## Design Decisions
+
+- **Governed semantics:** calculations stay in metric views, grain changes in helper views, and historical attributes on facts.
+- **Cost-aware AI:** private lookups cache distinct normalized text; the synthetic refresh uses 152 calls instead of about 383,492 per-row calls.
+- **Attributable agents:** a code-defined router delegates to three narrow on-behalf-of-user Agents with SQL and source provenance.
+- **Fit-for-purpose serving:** the lakehouse stays authoritative; Lakebase serves the watchlist and user-scoped threads.
+- **No governance bypass:** masks stay active, signals require human review, and the app stays owner-only until account-level groups enable shared access.
 
 ## Repository Map
 

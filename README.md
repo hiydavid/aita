@@ -42,7 +42,7 @@ Aita connects workforce, talent, and recruiting signals before they create servi
 | `docs/pipeline_spec.md` | Pipeline datasets, layers, grains, business rules, and Gold governance |
 | `docs/semantics_spec.md` | Semantic helpers, metric definitions, Genie Agents, access, and evaluation |
 | `docs/progress.md` | Phase status and next steps |
-| `evidence/` | Run evidence: `pipeline_summary.md` and `semantic_summary.md` |
+| `evidence/` | Run summaries and raw execution output |
 | `AGENTS.md` | Contributor and coding-agent rules |
 
 ## Environment

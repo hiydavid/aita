@@ -4,7 +4,7 @@ Last updated: October 28, 2026
 
 ## Completed
 
-Run IDs, row counts, and check results are in `evidence/pipeline_summary.md` (generation through Gold) and `evidence/semantic_summary.md` (governance onward).
+Run IDs, row counts, and check results are in `evidence/pipeline_summary.md` (generation through Gold), `evidence/semantic_summary.md` (governance onward), and `evidence/run_log.md` (raw Phase 18 output).
 
 | Phase | Outcome |
 |---|---|
@@ -27,12 +27,12 @@ Run IDs, row counts, and check results are in `evidence/pipeline_summary.md` (ge
 | Phase 15: Evaluation and handoff | Owner-only release smoke, parity, security, state, deployment, and reviewer-budget checks pass; prior 9/9 routing evidence is retained without rerun |
 | Phase 16: Industry framing | `README.md` now states the synthetic banking problem, buyer KPIs, executive sponsor and domain owner, FSI Industry Outcome Map alignment, and durable design rationale; it remains within the 9,000-character reviewer limit |
 | Phase 17: Lakebase review write-back | Shared append-only review events, latest-status filtering, reviewed counts, server-derived identity, current-watchlist validation, per-request parity/freshness, and bundle-config drift validation are deployed; live success and 400/401/404 rejection checks pass |
+| Phase 18: Raw execution evidence | `evidence/run_log.md` records timestamped, command-attributed fresh pipeline, SQL, AI, mask, Genie, router, Lakebase, write-back, and app-state output; all three evidence files remain below 9,000 characters |
 
 ## Planned: Submission Readiness
 
 | Phase | Scope | Status |
 |---|---|---|
-| Phase 18: Raw execution evidence | New `evidence/run_log.md` (≤ 9,000 chars) of verbatim, timestamped, command-attributed output: fresh `aita_pipeline` run (after approval), event-log expectations, validation and pattern-check SQL, AI Function input/label samples, mask `DESCRIBE`, Genie `check-sql` and Agent-mode evals, router `appkit agent eval`, Lakebase parity and write-back requests, app state; trim both summary files below 9,000 chars and point them to the run log | Not started |
 | Phase 19: Untrack, reviewer path, budget | Remove tracked references to `docs/` and `AGENTS.md`; back up, then `git rm --cached` and ignore `docs/`, `AGENTS.md`, `.isaac/`, and `.vscode/`; add a ~15-file Reviewer path to `README.md`; report tracked file and character counts and over-limit reviewer-path files; re-run `bundle validate` | Not started |
 
 Open decisions: Lakebase is not registered in Unity Catalog for Genie (default); spec backup location is required before Phase 19. The project owner commits and makes the repository public.
@@ -51,10 +51,10 @@ Each Agent remains at its 10 canonical Agent-mode benchmarks. The app's initial 
 
 ## Aita App Complete
 
-The owner-only implementation and demo evaluation in `docs/app_spec.md` are complete. The initial routing result remains 9/9 canonical single-domain questions; it was not rerun for final handoff. Cross-domain and clarification coverage remains part of production benchmark expansion.
+The owner-only implementation and demo evaluation in `docs/app_spec.md` are complete. The fresh Phase 18 routing result remains 9/9 canonical single-domain questions. Cross-domain and clarification coverage remains part of production benchmark expansion.
 
 The Lakebase-synced watchlist, shared review write-back, and three domain Agents are live in the app. Shared-user release remains blocked until account-level groups satisfy semantic publication gate 3; only the owner-scoped development deployment may proceed under the constrained-demo exception.
 
 ## Handoff
 
-All 15 build phases and submission-readiness Phases 16–17 are complete for the owner-only demo. Shared access, per-Agent 30-benchmark expansion, and production routing remain deferred. The project owner handles commits.
+All 15 build phases and submission-readiness Phases 16–18 are complete for the owner-only demo. Shared access, per-Agent 30-benchmark expansion, and production routing remain deferred. The project owner handles commits.

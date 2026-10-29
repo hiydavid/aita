@@ -1,6 +1,6 @@
 # Semantic and Governance Evidence
 
-Phases 5–8 ran with profile `genie-workbench`, target `dev`, and serverless warehouse `813b0ad2f3036e46`. Every check passed unless marked deferred.
+Phases 5–18 used profile `genie-workbench`, target `dev`, and serverless warehouse `813b0ad2f3036e46`. Every check passed unless marked deferred. Timestamped command output is in `evidence/run_log.md`.
 
 ## Runs
 
@@ -9,7 +9,7 @@ Phases 5–8 ran with profile `genie-workbench`, target `dev`, and serverless wa
 | Gold governance | `74640997233422` | Pipeline `baf23f7b-cfd2-421f-b52a-6e1f089cb3fe` |
 | Semantic helpers | | Pipeline `daa262c6-d33b-409c-9af0-5cd6a137059d` |
 | Metric views | Semantic job `675414841768481` | Pipeline `50b9c66a-d2d6-458a-8664-4f5c731317b7` |
-| Orchestration | `aita_pipeline` `1094796673508321`; publish task `739156609695933` | SDP `28751948-2568-4f31-b630-60b1dae1ba56`; Lakebase `93830fd4-6225-437d-b7d1-cc26dcb8303e` |
+| Orchestration | `aita_pipeline` `1070492872189033`; publish task `681469309872799` | SDP `c7639109-608b-4907-838a-97c0f694a82b`; Lakebase `4b8275d5-15a3-448a-84f3-a06d3d7e82f1` |
 
 Semantic job `675414841768481` passed all eight parallel publication tasks; the deferred grant issue is unchanged (see Access).
 
@@ -65,7 +65,7 @@ As `aita_hr_admin`, `mv_talent` returned 18,839 active employees, 2,393 high per
 
 ## Orchestration and Lakebase
 
-All five `aita_pipeline` tasks passed in run `1094796673508321`: `generate_data`, `gold_governance`, `sdp_pipeline`, `publish_semantics`, and `sync_lakebase`. Full refresh matches the generator's complete snapshots and restored 404,028 Bronze rows without duplicate appends. Shared grants remain in `aita_apply_semantic_grants`.
+All five `aita_pipeline` tasks passed in fresh run `1070492872189033`: `generate_data`, `gold_governance`, `sdp_pipeline`, `publish_semantics`, and `sync_lakebase`. Full refresh matches the generator's complete snapshots and restored 404,028 Bronze rows without duplicate appends. Shared grants remain in `aita_apply_semantic_grants`.
 
 | Lakebase setting | Value |
 |---|---|
@@ -86,7 +86,7 @@ Snapshot mode is required because the source is a materialized view, and trigger
 | Null employee keys | 0 | 0 |
 | Maximum as-of date | 2026-12-31 | 2026-12-31 |
 
-After Lakebase update `b4c404cc-2ec0-4f38-87ff-32bc05afbdb6`, the synced table reported `SYNCED_TABLE_ONLINE_NO_PENDING_UPDATE`.
+After Lakebase update `4b8275d5-15a3-448a-84f3-a06d3d7e82f1`, the app reported fresh 3,427-row parity with 3,427 distinct, zero null keys, and as-of date `2026-12-31`.
 
 ## Genie Agent Authoring
 
@@ -105,11 +105,11 @@ Approved metadata repairs fixed the other baseline failures. All three Agents me
 ## App Foundation and Routing
 
 - AppKit `0.84.0` app `aita-david-huang` is `RUNNING` and `ACTIVE`; owner-only deployment `01f1d3463f5f1488903f6d682c1de98c` succeeded.
-- The router exposes exactly three OBO Genie tools. Its OAuth eval passed all 27 assertions: 9/9 canonical questions matched the exact unique Agent set.
+- The router exposes exactly three OBO Genie tools. Its fresh OAuth eval passed: 9/9 canonical questions matched the exact unique Agent set.
 - Chat exposes Agent SQL and identity, preserves per-Agent follow-up IDs, and shows streaming, partial/error, and AI-verification states.
-- Watchlist reads retain 3,427-row parity and per-request freshness. Append-only review write-back stored two events for `EMP002939` (`in_review`, then `reviewed`) with server-derived reviewer and source date; latest-event filtering reports 1 of 3,427 reviewed. Invalid status, spoofed reviewer, 501-character note, unknown employee, and unauthenticated requests returned 400/400/400/404/401.
+- Watchlist reads retain 3,427-row parity and per-request freshness. Append-only review write-back now includes the Phase 18 `reviewed` verification for `EMP002939`, with server-derived reviewer and source date; latest-event filtering reports 1 of 3,427 reviewed. Fresh invalid-status and unauthenticated requests returned 400/401; earlier spoofing, length, and unknown-employee checks remain 400/400/404.
 - History enforces server-derived ownership and 30-day purge-on-access. A temporary thread completed create, continue, four-message replay, delete, and post-delete 404; query and forwarded-header identity spoof attempts still returned only the owner's 46 threads.
 
 ## Final Handoff Check
 
-On October 28, strict AppKit, bundle, source-config, build, lint, and type checks passed. Final smoke confirmed all three SPA routes, owner-only ACLs, three OBO Genie bindings, SP-only Lakebase, 3,427-row fresh parity, persistent review state, and 46 owner threads with 30-day retention. The prior 9/9 routing result was retained without rerun; shared release and production benchmark expansion remain deferred.
+On October 28, strict AppKit, bundle, source-config, build, lint, and type checks passed. Phase 18 reran 9/9 routing, all 36 Genie SQL checks, all 30 Agent-mode conversations, app state, and 3,427-row Lakebase parity. Shared release and production benchmark expansion remain deferred.

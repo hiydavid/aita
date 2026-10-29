@@ -1,21 +1,10 @@
 # Pipeline Evidence
 
-Synthetic generation through Gold, run October 24–27, 2026 on profile `genie-workbench` and bundle target `dev`. Every check below passed.
+Synthetic generation through Gold, verified October 28, 2026 on profile `genie-workbench` and bundle target `dev`. Every check below passed. Timestamped command output is in `evidence/run_log.md`.
 
 ## Runs
 
-| Stage | Job run | Pipeline update |
-|---|---|---|
-| Bronze ingestion | `65455966715028` | `256ca01f-05d2-4300-9eb3-c709c9317656` |
-| Silver core | `332861017181304` | `936675c5-59cd-498d-869d-50d35bc342f0` |
-| Silver AI sample | `501528568974054` | `ba87c9cf-eeb4-4d50-9997-d39c059fd47d` |
-| Silver AI optimized | | `dab347e2-e973-4b3c-9350-871b79a4014b` |
-| Silver AI engagement refinement | | `2cd52b9d-2486-4924-b7bd-15b8369f0ec8` |
-| Gold dimensions | `961565381599131` | `ed904241-36ae-4fd2-ab91-15eaa1882df3` |
-| Gold facts | `24365280429776` | `9f70c7ed-566a-4fc9-8793-de4d05e54ec5` |
-| Talent watchlist | `618778647851719` | `30cecb4b-3be0-4180-9d69-8c79bc38fe14` |
-| Gold worker-version refactor | | `a40a2324-758c-4fb8-a0e5-4b5ce27054f4` |
-| Post-simplification verification | `73023870029445` | `b0b789ed-a8e2-40b8-a3dc-da9c0315844b` |
+Fresh full job `1070492872189033` passed all five tasks. SDP update `c7639109-608b-4907-838a-97c0f694a82b` and Lakebase update `4b8275d5-15a3-448a-84f3-a06d3d7e82f1` completed.
 
 ## Row Reconciliation
 
@@ -98,11 +87,7 @@ Per-row inference would have made about 383,492 calls; cached lookups over disti
 
 Example: "The schedule change created unpredictable shifts and an unsustainable workload. My manager could not provide flexibility, so I accepted another role." → `schedule and workload`, negative.
 
-Resolved issues behind the current design:
-
-- Streaming `SELECT DISTINCT` requires a watermark in append mode (failed run `162906550700389`); keyed AUTO CDC Type 1 flows deduplicate instead.
-- `ai_extract` version 2.1 wrapped array elements in objects; version 2.0 returns plain `ARRAY<STRING>`.
-- Per-row refresh `9a47d2e4-f3c7-4d84-858a-fc6e4cb14882` was canceled for cost. The first cached update, `7bdefa31-2a61-4e3d-8891-7f464b857f50`, failed because the targeted refresh omitted the new private views.
+Resolved design note: keyed AUTO CDC replaces streaming `SELECT DISTINCT`, AI extraction uses version 2.0 arrays, and cached private lookups replace costly per-row inference.
 
 ## Gold
 
@@ -121,7 +106,7 @@ Resolved issues behind the current design:
 | `fact_requisition` | 2,400 | requisition |
 | `fact_application_funnel` | 28,800 | application |
 
-All 12 tables have zero duplicate or null keys and zero source-count differences; 19 fact-to-dimension checks found zero orphan keys. Updates `a40a2324-758c-4fb8-a0e5-4b5ce27054f4` (`worker_versions`) and `84990991-4115-4097-9d9c-6d01e74bfe77` (`latest_talent`) retained exact counts, grains, and dual fingerprints. Full update `28751948-2568-4f31-b630-60b1dae1ba56` in job `1094796673508321` compiled the simplified date, attrition, recruiting, and watchlist SQL. `dim_date`, `fact_attrition_event`, and `talent_watchlist` retained exact counts and dual fingerprints; both recruiting duration expressions had zero mismatches before and after the refresh, and all 13 semantic checks passed.
+All 12 tables have zero duplicate or null keys and zero source-count differences; 19 fact-to-dimension checks found zero orphan keys. The fresh full update retained counts and grains; both recruiting duration expressions have zero mismatches, and all 13 semantic checks pass.
 
 - Headcount: 24 months, 2024-10 through 2026-09, derived from `team_productivity`; September 2026 month-end headcount is 18,839; 1,161 exits, 884 voluntary; zero empty cells.
 - Temporal joins use half-open SCD Type 2 intervals. The single zero-length history version is excluded from interval scans, and its manager-change event is still counted.

@@ -104,14 +104,12 @@ Approved metadata repairs fixed the other baseline failures. All three Agents me
 
 ## App Foundation and Routing
 
-- AppKit `0.84.0` app `aita-david-huang` is `RUNNING` and `ACTIVE`; owner-only deployment `01f1d32fe1b61d9bbd7533cc29e0fb3a` succeeded.
+- AppKit `0.84.0` app `aita-david-huang` is `RUNNING` and `ACTIVE`; owner-only deployment `01f1d3463f5f1488903f6d682c1de98c` succeeded.
 - The router exposes exactly three OBO Genie tools. Its OAuth eval passed all 27 assertions: 9/9 canonical questions matched the exact unique Agent set.
 - Chat exposes Agent SQL and identity, preserves per-Agent follow-up IDs, and shows streaming, partial/error, and AI-verification states.
-- Watchlist reads passed live pagination and JSONB filters: 3,427 total, 2,199 disengaging, and 777 Consumer Banking rows. Startup parity remains 3,427 distinct keys, zero null keys, and `as_of_date` `2026-12-31`.
+- Watchlist reads retain 3,427-row parity and per-request freshness. Append-only review write-back stored two events for `EMP002939` (`in_review`, then `reviewed`) with server-derived reviewer and source date; latest-event filtering reports 1 of 3,427 reviewed. Invalid status, spoofed reviewer, 501-character note, unknown employee, and unauthenticated requests returned 400/400/400/404/401.
 - History enforces server-derived ownership and 30-day purge-on-access. A temporary thread completed create, continue, four-message replay, delete, and post-delete 404; query and forwarded-header identity spoof attempts still returned only the owner's 46 threads.
 
 ## Final Handoff Check
 
-On October 28, strict AppKit and bundle validation, app deployment, and live metadata reconciliation passed. The job, pipelines, Agents, warehouse, app resources, and DAG match source control and the IDs above. Counts remain 20,000 workers, 18,839 active talent rows, and 3,427 source/synced/app-served watchlist rows; the final SDP update still has zero expectation or AI-error failures.
-
-Phase 15 retained the prior 9/9 routing result without rerun. Final read-only smoke confirmed all three SPA routes, owner-only ACLs, unauthenticated 401, three OBO Genie bindings, SP-only Lakebase, 3,427-row fresh parity, 46 owner threads with 30-day retention, identity-spoof isolation, and expected 400/404 validation responses. Shared release and production benchmark expansion remain deferred.
+On October 28, strict AppKit, bundle, source-config, build, lint, and type checks passed. Final smoke confirmed all three SPA routes, owner-only ACLs, three OBO Genie bindings, SP-only Lakebase, 3,427-row fresh parity, persistent review state, and 46 owner threads with 30-day retention. The prior 9/9 routing result was retained without rerun; shared release and production benchmark expansion remain deferred.

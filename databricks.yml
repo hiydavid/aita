@@ -4,6 +4,17 @@ bundle:
 include:
   - resources/*.yml
 
+scripts:
+  validate_app_config:
+    content: |
+      configured="$(awk '/name: LAKEBASE_SYNCED_TABLE/{getline; sub(/^[[:space:]]*value:[[:space:]]*/, ""); print; exit}' src/app/aita/app.yaml)"
+      test "$configured" = "$LAKEBASE_SYNCED_TABLE" || {
+        echo "app.yaml LAKEBASE_SYNCED_TABLE does not match the bundle variable" >&2
+        exit 1
+      }
+    env:
+      LAKEBASE_SYNCED_TABLE: ${var.lakebase_synced_table}
+
 variables:
   catalog:
     default: genie_workbench_dev_catalog

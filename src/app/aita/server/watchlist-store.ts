@@ -1,5 +1,14 @@
-import { WATCHLIST_FLAGS, type WatchlistFlag, type WatchlistItem, type WatchlistResponse } from '../shared/app-state';
+import {
+  WATCHLIST_FLAGS,
+  WATCHLIST_REVIEW_STATUSES,
+  type WatchlistFlag,
+  type WatchlistItem,
+  type WatchlistResponse,
+  type WatchlistReview,
+  type WatchlistReviewStatus,
+} from '../shared/app-state';
 import type { LakebaseQuery } from './history-store';
+import { dateText, initializeWatchlistReviewSchema, postgresRelation, timestampText } from './watchlist-schema';
 
 interface WatchlistSummary {
   row_count: number;
@@ -11,8 +20,19 @@ interface WatchlistSummary {
 interface WatchlistQuery {
   businessLine?: string;
   flag?: WatchlistFlag;
+  reviewStatus?: WatchlistReviewStatus;
   page: number;
   pageSize: number;
+}
+
+interface WatchlistReviewInput {
+  status: WatchlistReviewStatus;
+  note?: string | null;
+}
+
+interface WatchlistMetadata {
+  summary: WatchlistSummary;
+  businessLines: string[];
 }
 
 export class LakebaseWatchlistStore {
@@ -23,35 +43,16 @@ export class LakebaseWatchlistStore {
     null_employee_id: 0,
     max_as_of_date: null,
   };
-  private businessLines: string[] = [];
+  private readonly relation: string;
+
+  constructor(syncedTableName: string) {
+    this.relation = postgresRelation(syncedTableName);
+  }
 
   async initialize(query: LakebaseQuery): Promise<void> {
     this.query = query;
-    const [summaryResult, businessLineResult] = await Promise.all([
-      query(`
-        SELECT COUNT(*)::integer AS row_count,
-               COUNT(DISTINCT employee_id)::integer AS distinct_employee_id,
-               COUNT(*) FILTER (WHERE employee_id IS NULL)::integer AS null_employee_id,
-               MAX(as_of_date)::text AS max_as_of_date
-        FROM aita_gold.talent_watchlist_serving
-      `),
-      query(`
-        SELECT DISTINCT business_line
-        FROM aita_gold.talent_watchlist_serving
-        WHERE business_line IS NOT NULL
-        ORDER BY business_line
-      `),
-    ]);
-    const rawSummary = summaryResult.rows[0];
-    if (rawSummary) {
-      this.summary = {
-        row_count: Number(rawSummary.row_count),
-        distinct_employee_id: Number(rawSummary.distinct_employee_id),
-        null_employee_id: Number(rawSummary.null_employee_id),
-        max_as_of_date: this.toDateText(rawSummary.max_as_of_date),
-      };
-    }
-    this.businessLines = businessLineResult.rows.map((row) => String(row.business_line));
+    await initializeWatchlistReviewSchema(query);
+    this.summary = (await this.readMetadata()).summary;
   }
 
   getSummary(): WatchlistSummary {
@@ -61,32 +62,41 @@ export class LakebaseWatchlistStore {
   async list(input: WatchlistQuery): Promise<WatchlistResponse> {
     const businessLine = input.businessLine ?? null;
     const flag = input.flag ?? null;
+    const reviewStatus = input.reviewStatus ?? null;
     const offset = (input.page - 1) * input.pageSize;
-    const [countResult, itemResult] = await Promise.all([
+    const parameters = [businessLine, flag, reviewStatus];
+    const [metadata, totalsResult, itemResult] = await Promise.all([
+      this.readMetadata(),
       this.run(
-        `SELECT COUNT(*)::integer AS total
-         FROM aita_gold.talent_watchlist_serving
-         WHERE ($1::text IS NULL OR business_line = $1)
-           AND ($2::text IS NULL OR risk_flags @> to_jsonb(ARRAY[$2::text]))`,
-        [businessLine, flag]
+        `${this.filteredWatchlistCte()}
+         SELECT COUNT(*) FILTER (
+                  WHERE ($3::text IS NULL OR review_status = $3)
+                )::integer AS total,
+                COUNT(*) FILTER (WHERE review_status = 'reviewed')::integer AS reviewed,
+                COUNT(*)::integer AS review_scope_total
+         FROM filtered_watchlist`,
+        parameters
       ),
       this.run(
-        `SELECT employee_id, business_line, risk_flags, reasons,
-                signal_count::integer AS signal_count, as_of_date::text AS as_of_date
-         FROM aita_gold.talent_watchlist_serving
-         WHERE ($1::text IS NULL OR business_line = $1)
-           AND ($2::text IS NULL OR risk_flags @> to_jsonb(ARRAY[$2::text]))
+        `${this.filteredWatchlistCte()}
+         SELECT employee_id, business_line, risk_flags, reasons,
+                signal_count::integer AS signal_count, as_of_date::text AS as_of_date,
+                review_status, review_note, reviewer, review_created_at
+         FROM filtered_watchlist
+         WHERE ($3::text IS NULL OR review_status = $3)
          ORDER BY signal_count DESC, employee_id
-         LIMIT $3 OFFSET $4`,
-        [businessLine, flag, input.pageSize, offset]
+         LIMIT $4 OFFSET $5`,
+        [...parameters, input.pageSize, offset]
       ),
     ]);
-    const total = Number(countResult.rows[0]?.total ?? 0);
+    this.summary = metadata.summary;
+    const totals = totalsResult.rows[0];
+    const total = Number(totals?.total ?? 0);
     const totalPages = total === 0 ? 0 : Math.ceil(total / input.pageSize);
     const parityPassed =
-      this.summary.row_count === this.summary.distinct_employee_id &&
-      this.summary.null_employee_id === 0 &&
-      this.summary.max_as_of_date !== null;
+      metadata.summary.row_count === metadata.summary.distinct_employee_id &&
+      metadata.summary.null_employee_id === 0 &&
+      metadata.summary.max_as_of_date !== null;
     return {
       items: itemResult.rows.map((row) => this.mapItem(row)),
       pagination: {
@@ -96,19 +106,95 @@ export class LakebaseWatchlistStore {
         totalPages,
       },
       filters: {
-        businessLines: this.businessLines,
+        businessLines: metadata.businessLines,
         flags: [...WATCHLIST_FLAGS],
+        reviewStatuses: [...WATCHLIST_REVIEW_STATUSES],
+      },
+      reviewSummary: {
+        reviewed: Number(totals?.reviewed ?? 0),
+        total: Number(totals?.review_scope_total ?? 0),
       },
       freshness: {
-        asOfDate: this.summary.max_as_of_date,
-        stale: this.isStale(this.summary.max_as_of_date),
+        asOfDate: metadata.summary.max_as_of_date,
+        stale: this.isStale(metadata.summary.max_as_of_date),
       },
       parity: {
-        rowCount: this.summary.row_count,
-        distinctEmployeeId: this.summary.distinct_employee_id,
-        nullEmployeeId: this.summary.null_employee_id,
+        rowCount: metadata.summary.row_count,
+        distinctEmployeeId: metadata.summary.distinct_employee_id,
+        nullEmployeeId: metadata.summary.null_employee_id,
         passed: parityPassed,
       },
+    };
+  }
+
+  async addReview(employeeId: string, reviewer: string, input: WatchlistReviewInput): Promise<WatchlistReview | null> {
+    const note = input.note?.trim() || null;
+    const result = await this.run(
+      `INSERT INTO aita_app.watchlist_review_events (
+         employee_id, as_of_date, status, note, reviewer
+       )
+       SELECT employee_id, as_of_date, $2, $3, $4
+       FROM ${this.relation}
+       WHERE employee_id = $1
+       ORDER BY as_of_date DESC
+       LIMIT 1
+       RETURNING status AS review_status, note AS review_note, reviewer,
+                 created_at AS review_created_at`,
+      [employeeId, input.status, note, reviewer]
+    );
+    const row = result.rows[0];
+    return row ? this.mapReview(row) : null;
+  }
+
+  private filteredWatchlistCte(): string {
+    return `WITH latest_review AS (
+              SELECT DISTINCT ON (employee_id, as_of_date)
+                     employee_id, as_of_date, status, note, reviewer, created_at
+              FROM aita_app.watchlist_review_events
+              ORDER BY employee_id, as_of_date, created_at DESC, event_id DESC
+            ),
+            filtered_watchlist AS (
+              SELECT watchlist.employee_id, watchlist.business_line,
+                     watchlist.risk_flags, watchlist.reasons, watchlist.signal_count,
+                     watchlist.as_of_date,
+                     COALESCE(review.status, 'unreviewed') AS review_status,
+                     review.note AS review_note,
+                     review.reviewer,
+                     review.created_at AS review_created_at
+              FROM ${this.relation} AS watchlist
+              LEFT JOIN latest_review AS review
+                ON review.employee_id = watchlist.employee_id
+               AND review.as_of_date = watchlist.as_of_date
+              WHERE ($1::text IS NULL OR watchlist.business_line = $1)
+                AND ($2::text IS NULL OR watchlist.risk_flags @> to_jsonb(ARRAY[$2::text]))
+            )`;
+  }
+
+  private async readMetadata(): Promise<WatchlistMetadata> {
+    const [summaryResult, businessLineResult] = await Promise.all([
+      this.run(`
+        SELECT COUNT(*)::integer AS row_count,
+               COUNT(DISTINCT employee_id)::integer AS distinct_employee_id,
+               COUNT(*) FILTER (WHERE employee_id IS NULL)::integer AS null_employee_id,
+               MAX(as_of_date)::text AS max_as_of_date
+        FROM ${this.relation}
+      `),
+      this.run(`
+        SELECT DISTINCT business_line
+        FROM ${this.relation}
+        WHERE business_line IS NOT NULL
+        ORDER BY business_line
+      `),
+    ]);
+    const row = summaryResult.rows[0];
+    return {
+      summary: {
+        row_count: Number(row?.row_count ?? 0),
+        distinct_employee_id: Number(row?.distinct_employee_id ?? 0),
+        null_employee_id: Number(row?.null_employee_id ?? 0),
+        max_as_of_date: dateText(row?.max_as_of_date),
+      },
+      businessLines: businessLineResult.rows.map((businessLine) => String(businessLine.business_line)),
     };
   }
 
@@ -122,25 +208,30 @@ export class LakebaseWatchlistStore {
       riskFlags,
       reasons: Array.isArray(row.reasons) ? row.reasons.map(String) : [],
       signalCount: Number(row.signal_count),
-      asOfDate: this.toDateText(row.as_of_date) ?? 'Unknown',
+      asOfDate: dateText(row.as_of_date) ?? 'Unknown',
+      review: this.mapReview(row),
     };
+  }
+
+  private mapReview(row: Record<string, unknown>): WatchlistReview {
+    const status = row.review_status ?? 'unreviewed';
+    if (!this.isReviewStatus(status)) throw new Error('Unsupported watchlist review status');
+    return {
+      status,
+      note: typeof row.review_note === 'string' ? row.review_note : null,
+      reviewer: typeof row.reviewer === 'string' ? row.reviewer : null,
+      createdAt: timestampText(row.review_created_at),
+    };
+  }
+
+  private isReviewStatus(value: unknown): value is WatchlistReviewStatus {
+    return typeof value === 'string' && WATCHLIST_REVIEW_STATUSES.some((status) => status === value);
   }
 
   private isStale(asOfDate: string | null): boolean {
     if (!asOfDate) return true;
     const ageMs = Date.now() - new Date(`${asOfDate}T00:00:00Z`).getTime();
     return ageMs > 45 * 24 * 60 * 60 * 1000;
-  }
-
-  private toDateText(value: unknown): string | null {
-    if (value === null || value === undefined) return null;
-    if (value instanceof Date) return value.toISOString().slice(0, 10);
-    if (typeof value !== 'string') return null;
-    const text = value;
-    const match = text.match(/^\d{4}-\d{2}-\d{2}/);
-    if (match) return match[0];
-    const date = new Date(text);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
   }
 
   private run(text: string, params?: unknown[]) {

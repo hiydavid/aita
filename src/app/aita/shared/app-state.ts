@@ -9,6 +9,17 @@ export const WATCHLIST_FLAGS = [
 
 export type WatchlistFlag = (typeof WATCHLIST_FLAGS)[number];
 
+export const WATCHLIST_REVIEW_STATUSES = ['unreviewed', 'in_review', 'reviewed'] as const;
+
+export type WatchlistReviewStatus = (typeof WATCHLIST_REVIEW_STATUSES)[number];
+
+export interface WatchlistReview {
+  status: WatchlistReviewStatus;
+  note: string | null;
+  reviewer: string | null;
+  createdAt: string | null;
+}
+
 export interface WatchlistItem {
   employeeId: string;
   businessLine: string;
@@ -16,6 +27,7 @@ export interface WatchlistItem {
   reasons: string[];
   signalCount: number;
   asOfDate: string;
+  review: WatchlistReview;
 }
 
 export interface WatchlistResponse {
@@ -29,6 +41,11 @@ export interface WatchlistResponse {
   filters: {
     businessLines: string[];
     flags: WatchlistFlag[];
+    reviewStatuses: WatchlistReviewStatus[];
+  };
+  reviewSummary: {
+    reviewed: number;
+    total: number;
   };
   freshness: {
     asOfDate: string | null;

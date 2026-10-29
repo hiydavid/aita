@@ -12,3 +12,5 @@ env:
     valueFrom: genie-recruiting
   - name: LAKEBASE_ENDPOINT
     valueFrom: postgres
+  - name: LAKEBASE_SYNCED_TABLE
+    value: genie_workbench_dev_catalog.aita_gold.talent_watchlist_serving

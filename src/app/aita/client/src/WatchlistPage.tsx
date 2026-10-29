@@ -2,17 +2,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Alert, AlertDescription, AlertTitle, Button } from '@databricks/appkit-ui/react';
 import { AlertTriangle, RefreshCw, Users } from 'lucide-react';
-import type { WatchlistResponse } from '../../shared/app-state';
+import type { WatchlistResponse, WatchlistReviewStatus } from '../../shared/app-state';
 import { ALL_FILTERS, WatchlistTable } from './WatchlistTable';
 
 export function WatchlistPage() {
   const navigate = useNavigate();
   const [businessLine, setBusinessLine] = useState(ALL_FILTERS);
   const [flag, setFlag] = useState(ALL_FILTERS);
+  const [reviewStatus, setReviewStatus] = useState(ALL_FILTERS);
   const [page, setPage] = useState(1);
   const [data, setData] = useState<WatchlistResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const loadWatchlist = useCallback(
     async (signal?: AbortSignal) => {
@@ -21,6 +23,7 @@ export function WatchlistPage() {
       const parameters = new URLSearchParams({ page: String(page), pageSize: '25' });
       if (businessLine !== ALL_FILTERS) parameters.set('businessLine', businessLine);
       if (flag !== ALL_FILTERS) parameters.set('flag', flag);
+      if (reviewStatus !== ALL_FILTERS) parameters.set('reviewStatus', reviewStatus);
       try {
         const response = await fetch(`/api/watchlist?${parameters}`, { signal });
         if (!response.ok) {
@@ -34,7 +37,7 @@ export function WatchlistPage() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [businessLine, flag, page]
+    [businessLine, flag, page, reviewStatus]
   );
 
   useEffect(() => {
@@ -46,12 +49,32 @@ export function WatchlistPage() {
   function resetFilters() {
     setBusinessLine(ALL_FILTERS);
     setFlag(ALL_FILTERS);
+    setReviewStatus(ALL_FILTERS);
     setPage(1);
   }
 
   function askAita(employeeId: string) {
     const prompt = `Explain why employee ${employeeId} appears on the talent watchlist and summarize the supporting governed signals.`;
     void navigate(`/?prompt=${encodeURIComponent(prompt)}`);
+  }
+
+  async function updateReview(employeeId: string, status: WatchlistReviewStatus, note: string): Promise<boolean> {
+    setReviewError(null);
+    try {
+      const response = await fetch(`/api/watchlist/${encodeURIComponent(employeeId)}/review`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status, note: note || null }),
+      });
+      if (!response.ok) {
+        throw new Error(response.status === 401 ? 'Your session is not authorized.' : 'Review update failed.');
+      }
+      await loadWatchlist();
+      return true;
+    } catch (updateError) {
+      setReviewError(updateError instanceof Error ? updateError.message : 'Review update could not be saved.');
+      return false;
+    }
   }
 
   const showingPartial = Boolean(error && data);
@@ -61,11 +84,16 @@ export function WatchlistPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-3xl font-semibold">Talent Watchlist</h2>
-          <p className="mt-1 text-muted-foreground">Read-only, low-latency signals from the Lakebase synced table.</p>
+          <p className="mt-1 text-muted-foreground">Low-latency signals with a shared Lakebase review queue.</p>
         </div>
         <div className="text-right text-sm text-muted-foreground">
           <div>Source as of {data?.freshness.asOfDate ?? 'unknown'}</div>
           <div>{data ? `${data.parity.rowCount.toLocaleString()} synced employees` : 'Checking freshness…'}</div>
+          <div>
+            {data
+              ? `${data.reviewSummary.reviewed.toLocaleString()} of ${data.reviewSummary.total.toLocaleString()} reviewed`
+              : 'Checking review status…'}
+          </div>
         </div>
       </div>
 
@@ -101,6 +129,13 @@ export function WatchlistPage() {
         </Alert>
       )}
 
+      {reviewError && (
+        <Alert variant="destructive">
+          <AlertTitle>Review update failed</AlertTitle>
+          <AlertDescription>{reviewError}</AlertDescription>
+        </Alert>
+      )}
+
       <WatchlistTable
         businessLine={businessLine}
         data={data}
@@ -108,6 +143,7 @@ export function WatchlistPage() {
         flag={flag}
         loading={loading}
         page={page}
+        reviewStatus={reviewStatus}
         onAskAita={askAita}
         onBusinessLineChange={(value) => {
           setBusinessLine(value);
@@ -119,6 +155,11 @@ export function WatchlistPage() {
         }}
         onPageChange={setPage}
         onReset={resetFilters}
+        onReview={updateReview}
+        onReviewStatusChange={(value) => {
+          setReviewStatus(value);
+          setPage(1);
+        }}
       />
     </div>
   );

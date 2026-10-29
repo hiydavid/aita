@@ -18,7 +18,8 @@ const genieSpaces = {
 };
 const threadStore = new LakebaseThreadStore();
 const historyStore = new LakebaseHistoryStore();
-const watchlistStore = new LakebaseWatchlistStore();
+const watchlistSource = requiredEnv('LAKEBASE_SYNCED_TABLE');
+const watchlistStore = new LakebaseWatchlistStore(watchlistSource);
 
 await createApp({
   plugins: [agents({ threadStore }), genie({ spaces: genieSpaces }), lakebase(), server()],
@@ -27,6 +28,7 @@ await createApp({
     await threadStore.initialize(lakebaseQuery);
     await historyStore.initialize(lakebaseQuery);
     await watchlistStore.initialize(lakebaseQuery);
+    console.log('[aita] Watchlist source', watchlistSource);
     console.log('[aita] Watchlist parity', watchlistStore.getSummary());
 
     appkit.server.extend((app) => {

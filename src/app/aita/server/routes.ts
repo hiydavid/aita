@@ -1,8 +1,14 @@
 import type { Application } from 'express';
-import { WATCHLIST_FLAGS, type WatchlistFlag } from '../shared/app-state';
-import { AGENT_KEYS, type AgentKey, type SqlEvidence, type TurnMetadataInput } from '../shared/routing';
+import { z } from 'zod';
+import {
+  WATCHLIST_FLAGS,
+  WATCHLIST_REVIEW_STATUSES,
+  type WatchlistFlag,
+  type WatchlistReviewStatus,
+} from '../shared/app-state';
 import type { LakebaseHistoryStore } from './history-store';
 import type { LakebaseThreadStore } from './thread-store';
+import { parseTurnMetadata } from './turn-metadata';
 import type { LakebaseWatchlistStore } from './watchlist-store';
 
 interface RouteStores {
@@ -10,6 +16,13 @@ interface RouteStores {
   threads: LakebaseThreadStore;
   watchlist: LakebaseWatchlistStore;
 }
+
+const watchlistReviewSchema = z
+  .object({
+    status: z.enum(WATCHLIST_REVIEW_STATUSES),
+    note: z.string().max(500).nullable().optional(),
+  })
+  .strict();
 
 export function registerRoutes(app: Application, genieAliases: string[], stores: RouteStores): void {
   app.get('/api/whoami', (req, res) => {
@@ -37,11 +50,13 @@ export function registerRoutes(app: Application, genieAliases: string[], stores:
     }
     const businessLine = queryText(req.query.businessLine, 120);
     const rawFlag = queryText(req.query.flag, 80);
+    const rawReviewStatus = queryText(req.query.reviewStatus, 80);
     const page = queryInteger(req.query.page, 1, 100_000);
     const pageSize = queryInteger(req.query.pageSize, 25, 100);
     if (
       (req.query.businessLine !== undefined && !businessLine) ||
-      (req.query.flag !== undefined && !isWatchlistFlag(rawFlag))
+      (req.query.flag !== undefined && !isWatchlistFlag(rawFlag)) ||
+      (req.query.reviewStatus !== undefined && !isWatchlistReviewStatus(rawReviewStatus))
     ) {
       res.status(400).json({ error: 'Invalid watchlist filter' });
       return;
@@ -54,6 +69,7 @@ export function registerRoutes(app: Application, genieAliases: string[], stores:
       const result = await stores.watchlist.list({
         ...(businessLine ? { businessLine } : {}),
         ...(isWatchlistFlag(rawFlag) ? { flag: rawFlag } : {}),
+        ...(isWatchlistReviewStatus(rawReviewStatus) ? { reviewStatus: rawReviewStatus } : {}),
         page,
         pageSize,
       });
@@ -61,6 +77,31 @@ export function registerRoutes(app: Application, genieAliases: string[], stores:
     } catch (error) {
       console.error('[aita] Failed to read watchlist', error);
       res.status(500).json({ error: 'Watchlist could not be loaded' });
+    }
+  });
+
+  app.post('/api/watchlist/:employeeId/review', async (req, res) => {
+    const reviewer = authenticatedUserId(req);
+    if (!reviewer) {
+      res.status(401).json({ error: 'Authenticated user is required' });
+      return;
+    }
+    const employeeId = queryText(req.params.employeeId, 120);
+    const parsed = watchlistReviewSchema.safeParse(req.body);
+    if (!employeeId || !parsed.success) {
+      res.status(400).json({ error: 'Invalid watchlist review' });
+      return;
+    }
+    try {
+      const review = await stores.watchlist.addReview(employeeId, reviewer, parsed.data);
+      if (!review) {
+        res.status(404).json({ error: 'Employee is not on the current watchlist' });
+        return;
+      }
+      res.status(201).json({ review });
+    } catch (error) {
+      console.error('[aita] Failed to save watchlist review', error);
+      res.status(500).json({ error: 'Watchlist review could not be saved' });
     }
   });
 
@@ -173,59 +214,10 @@ function isWatchlistFlag(value: string | undefined): value is WatchlistFlag {
   return value !== undefined && WATCHLIST_FLAGS.some((flag) => flag === value);
 }
 
+function isWatchlistReviewStatus(value: string | undefined): value is WatchlistReviewStatus {
+  return value !== undefined && WATCHLIST_REVIEW_STATUSES.some((status) => status === value);
+}
+
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isAgentKey(value: unknown): value is AgentKey {
-  return typeof value === 'string' && AGENT_KEYS.some((agent) => agent === value);
-}
-
-function parseTurnMetadata(value: unknown): TurnMetadataInput | null {
-  if (!isRecord(value)) return null;
-  const routedAgents = value.routedAgents;
-  const latencyMs = value.latencyMs;
-  if (
-    !Array.isArray(routedAgents) ||
-    routedAgents.length > AGENT_KEYS.length ||
-    !routedAgents.every(isAgentKey) ||
-    new Set(routedAgents).size !== routedAgents.length ||
-    typeof latencyMs !== 'number' ||
-    !Number.isInteger(latencyMs) ||
-    latencyMs < 0 ||
-    latencyMs > 600_000
-  ) {
-    return null;
-  }
-  if (!isRecord(value.genieConversationIds) || !isRecord(value.generatedSql)) return null;
-
-  const genieConversationIds: Partial<Record<AgentKey, string>> = {};
-  const generatedSql: Partial<Record<AgentKey, SqlEvidence[]>> = {};
-  for (const agent of AGENT_KEYS) {
-    const conversationId = value.genieConversationIds[agent];
-    if (conversationId !== undefined) {
-      if (typeof conversationId !== 'string' || conversationId.length > 128) return null;
-      genieConversationIds[agent] = conversationId;
-    }
-    const rawStatements = value.generatedSql[agent];
-    if (rawStatements === undefined) continue;
-    if (!Array.isArray(rawStatements) || rawStatements.length > 20) return null;
-    const statements: SqlEvidence[] = [];
-    for (const rawStatement of rawStatements) {
-      if (!isRecord(rawStatement) || typeof rawStatement.query !== 'string' || rawStatement.query.length > 50_000) {
-        return null;
-      }
-      if (rawStatement.title !== undefined && typeof rawStatement.title !== 'string') return null;
-      statements.push({
-        query: rawStatement.query,
-        ...(rawStatement.title ? { title: rawStatement.title.slice(0, 500) } : {}),
-      });
-    }
-    generatedSql[agent] = statements;
-  }
-  return { routedAgents, genieConversationIds, generatedSql, latencyMs };
 }

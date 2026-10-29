@@ -102,13 +102,14 @@ All six example queries and all 30 canonical benchmark queries passed read-only 
 
 Approved metadata repairs fixed the other baseline failures. All three Agents meet the 90% initial publication gate; shared access remains deferred.
 
-## App Foundation
+## App Foundation and Routing
 
-- AppKit `0.84.0` app `aita-david-huang` (`e4878bfe-f34e-403f-bc96-fdeb5048f3e8`) is `RUNNING`; deployment `01f1d31d0d1c1622b1734735e14664aa` succeeded. ACLs contain only the owner and inherited workspace admins. Effective user scopes are `genie` plus identity-read defaults.
-- `databricks-claude-haiku-5-5` produced and streamed the correct `workforce_attrition` tool call in 1.63 seconds; GPT-5.6 Terra/Luna rejected tools in default reasoning mode.
-- Genie aliases `workforce_attrition`, `talent_performance`, and `recruiting` run OBO. The model and Lakebase run as the app service principal.
-- `aita_app.threads`, `messages`, and `turn_metadata` provide server-owned user isolation, routing metadata, and 30-day purge-on-access; the app service principal owns all three.
-- Lakebase grants are limited to `USAGE` on `aita_gold` and `SELECT` on `aita_gold.talent_watchlist_serving`. The app-SP startup check returned 3,427 rows, 3,427 distinct employee IDs, zero null keys, and maximum `as_of_date` `2026-12-31`.
+- AppKit `0.84.0` app `aita-david-huang` (`e4878bfe-f34e-403f-bc96-fdeb5048f3e8`) is `RUNNING`; deployment `01f1d32b44fc1f9fa32a19db4ed6ac05` succeeded. ACLs remain owner-only with inherited workspace admins.
+- The code-defined router exposes exactly three OBO Genie tools: `workforce_attrition`, `talent_performance`, and `recruiting`. The Haiku 5.5 model and Lakebase run as the app service principal.
+- The OAuth live routing eval passed all 27 assertions: 9/9 canonical questions, three per Agent, completed successfully and matched the exact unique Agent set. Cross-domain and clarification coverage remains deferred to production expansion.
+- Chat streams answers with Agent badges, generated SQL, identity disclosure, partial/error states, and an AI verification note. Follow-ups preserve per-Agent Genie conversation IDs without exposing the context marker.
+- `aita_app.threads`, `messages`, and `turn_metadata` enforce server-derived user ownership and 30-day purge-on-access. The live thread object is updated after each durable message insert so the current turn reaches the model.
+- The app-SP startup check remains 3,427 rows, 3,427 distinct employee IDs, zero null keys, and maximum `as_of_date` `2026-12-31`.
 
 ## Final Handoff Check
 

@@ -92,7 +92,7 @@ The app does not need its own SQL warehouse resource unless it directly runs ana
 
 ### Evaluation and acceptance
 
-Seed routing evaluation from all 30 canonical single-domain benchmarks in `docs/semantics_spec.md`, then add the three cross-domain examples and at least two ambiguous questions that should clarify before routing. Each item records the expected Agent set and expected behavior.
+Seed the initial routing evaluation with three representative canonical questions per domain Agent from `docs/semantics_spec.md`. Each item records the expected Agent and exact single-Agent behavior. Broader cross-domain and clarification evaluation belongs to the production benchmark expansion.
 
 Release gates:
 

@@ -1,14 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Message, Thread, ThreadStore } from '@databricks/appkit/beta';
+import type { TurnMetadataInput } from '../shared/routing';
 
-type Query = (
-  text: string,
-  params?: unknown[],
-) => Promise<{ rows: Record<string, unknown>[] }>;
-
-interface PersistedThread extends Thread {
-  title: string;
-}
+type Query = (text: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
 
 const RETENTION_SQL = `
   DELETE FROM aita_app.threads
@@ -17,6 +11,7 @@ const RETENTION_SQL = `
 
 export class LakebaseThreadStore implements ThreadStore {
   private query?: Query;
+  private liveThreads = new Map<string, Thread>();
 
   async initialize(query: Query): Promise<void> {
     this.query = query;
@@ -71,10 +66,10 @@ export class LakebaseThreadStore implements ThreadStore {
     const result = await this.run(
       `INSERT INTO aita_app.threads (id, user_id)
        VALUES ($1, $2)
-       RETURNING id, user_id, title, created_at, updated_at`,
-      [id, userId],
+       RETURNING id, user_id, created_at, updated_at`,
+      [id, userId]
     );
-    return this.mapThread(result.rows[0], []);
+    return this.rememberThread(this.mapThread(result.rows[0], []));
   }
 
   async get(threadId: string, userId: string): Promise<Thread | null> {
@@ -88,11 +83,7 @@ export class LakebaseThreadStore implements ThreadStore {
     return this.loadThreads(userId);
   }
 
-  async addMessage(
-    threadId: string,
-    userId: string,
-    message: Message,
-  ): Promise<void> {
+  async addMessage(threadId: string, userId: string, message: Message): Promise<void> {
     await this.purgeExpired();
     const result = await this.run(
       `WITH next_turn AS (
@@ -116,11 +107,12 @@ export class LakebaseThreadStore implements ThreadStore {
         message.toolCallId ?? null,
         message.toolCalls ? JSON.stringify(message.toolCalls) : null,
         message.createdAt,
-      ],
+      ]
     );
     if (result.rows.length === 0) {
       throw new Error(`Thread ${threadId} not found`);
     }
+    this.liveThreads.get(threadId)?.messages.push(message);
   }
 
   async delete(threadId: string, userId: string): Promise<boolean> {
@@ -128,21 +120,56 @@ export class LakebaseThreadStore implements ThreadStore {
       `DELETE FROM aita_app.threads
        WHERE id = $1 AND user_id = $2
        RETURNING id`,
-      [threadId, userId],
+      [threadId, userId]
+    );
+    if (result.rows.length > 0) this.liveThreads.delete(threadId);
+    return result.rows.length > 0;
+  }
+
+  async saveTurnMetadata(threadId: string, userId: string, metadata: TurnMetadataInput): Promise<boolean> {
+    const result = await this.run(
+      `WITH owned_turn AS (
+         SELECT messages.thread_id, messages.turn_index
+         FROM aita_app.messages AS messages
+         INNER JOIN aita_app.threads AS threads
+           ON threads.id = messages.thread_id
+         WHERE messages.thread_id = $1
+           AND threads.user_id = $2
+           AND messages.role = 'assistant'
+         ORDER BY messages.turn_index DESC
+         LIMIT 1
+       )
+       INSERT INTO aita_app.turn_metadata (
+         thread_id, turn_index, routed_agents, genie_conversation_ids,
+         generated_sql, latency_ms
+       )
+       SELECT thread_id, turn_index, $3::text[], $4::jsonb, $5::jsonb, $6
+       FROM owned_turn
+       ON CONFLICT (thread_id, turn_index) DO UPDATE SET
+         routed_agents = EXCLUDED.routed_agents,
+         genie_conversation_ids = EXCLUDED.genie_conversation_ids,
+         generated_sql = EXCLUDED.generated_sql,
+         latency_ms = EXCLUDED.latency_ms
+       RETURNING turn_index`,
+      [
+        threadId,
+        userId,
+        metadata.routedAgents,
+        JSON.stringify(metadata.genieConversationIds),
+        JSON.stringify(metadata.generatedSql),
+        metadata.latencyMs,
+      ]
     );
     return result.rows.length > 0;
   }
 
-  private async loadThreads(
-    userId: string,
-    threadId?: string,
-  ): Promise<PersistedThread[]> {
+  private async loadThreads(userId: string, threadId?: string): Promise<Thread[]> {
     const threadResult = await this.run(
-      `SELECT id, user_id, title, created_at, updated_at
+      `SELECT id, user_id, created_at, updated_at
        FROM aita_app.threads
        WHERE user_id = $1 AND ($2::uuid IS NULL OR id = $2::uuid)
        ORDER BY updated_at DESC`,
-      [userId, threadId ?? null],
+      [userId, threadId ?? null]
     );
     if (threadResult.rows.length === 0) return [];
 
@@ -152,7 +179,7 @@ export class LakebaseThreadStore implements ThreadStore {
        FROM aita_app.messages
        WHERE thread_id = ANY($1::uuid[])
        ORDER BY thread_id, turn_index`,
-      [ids],
+      [ids]
     );
     const messages = new Map<string, Message[]>();
     for (const row of messageResult.rows) {
@@ -161,20 +188,21 @@ export class LakebaseThreadStore implements ThreadStore {
       current.push(this.mapMessage(row));
       messages.set(id, current);
     }
-    return threadResult.rows.map((row) =>
-      this.mapThread(row, messages.get(String(row.id)) ?? []),
-    );
+    return threadResult.rows.map((row) => this.rememberThread(this.mapThread(row, messages.get(String(row.id)) ?? [])));
   }
 
-  private mapThread(
-    row: Record<string, unknown> | undefined,
-    messages: Message[],
-  ): PersistedThread {
+  private rememberThread(thread: Thread): Thread {
+    const current = this.liveThreads.get(thread.id);
+    if (current) return Object.assign(current, thread);
+    this.liveThreads.set(thread.id, thread);
+    return thread;
+  }
+
+  private mapThread(row: Record<string, unknown> | undefined, messages: Message[]): Thread {
     if (!row) throw new Error('Lakebase did not return a thread row');
     return {
       id: String(row.id),
       userId: String(row.user_id),
-      title: String(row.title),
       messages,
       createdAt: this.toDate(row.created_at),
       updatedAt: this.toDate(row.updated_at),
@@ -190,7 +218,7 @@ export class LakebaseThreadStore implements ThreadStore {
       id: String(row.id),
       role: role as Message['role'],
       content: String(row.content),
-      toolCallId: row.tool_call_id ? String(row.tool_call_id) : undefined,
+      toolCallId: typeof row.tool_call_id === 'string' ? row.tool_call_id : undefined,
       toolCalls: this.mapToolCalls(row.tool_calls),
       createdAt: this.toDate(row.created_at),
     };
@@ -202,15 +230,14 @@ export class LakebaseThreadStore implements ThreadStore {
       if (!entry || typeof entry !== 'object') return [];
       const call = entry as Record<string, unknown>;
       if (typeof call.id !== 'string' || typeof call.name !== 'string') return [];
-      return [{
-        id: call.id,
-        name: call.name,
-        args: call.args,
-        thoughtSignature:
-          typeof call.thoughtSignature === 'string'
-            ? call.thoughtSignature
-            : undefined,
-      }];
+      return [
+        {
+          id: call.id,
+          name: call.name,
+          args: call.args,
+          thoughtSignature: typeof call.thoughtSignature === 'string' ? call.thoughtSignature : undefined,
+        },
+      ];
     });
   }
 

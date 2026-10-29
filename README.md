@@ -44,7 +44,7 @@ Aita connects workforce, talent, and recruiting signals before they create servi
 ## Reviewer Path
 
 Read these 15 files in order for the architecture, executable path, governance, and proof:
-Budget: 101 tracked files (95 UTF-8 text, 6 images) and 439,313 text characters; this path is 15 files and 76,068 characters; files over 9,000 characters: none.
+Budget: 102 tracked files (96 UTF-8 text, 6 images) and 442,009 text characters; this path is 15 files and 76,206 characters; files over 9,000 characters: 5.
 
 1. `README.md`
 2. `databricks.yml`
@@ -128,6 +128,8 @@ CREATE VOLUME IF NOT EXISTS genie_workbench_dev_catalog.aita_bronze.landing;
 ```
 
 Required privileges: `USE CATALOG` and `CREATE SCHEMA` on the catalog, and `CREATE VOLUME` on `aita_bronze`.
+
+Before the first `aita_pipeline` run, follow `src/setup/lakebase_setup.sh` to provision Lakebase after the source materialized view exists.
 
 ## Governance and Access Setup
 

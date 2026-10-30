@@ -1,6 +1,6 @@
 # Aita
 
-FE Bar submission. Aita unifies 12 synthetic HR datasets for a fictional bank through Lakeflow pipelines, AI Functions, metric views, Genie Agents, and a Lakebase-served talent watchlist.
+FE Bar submission. Aita (AI Talent Advisor) unifies 12 synthetic HR datasets for a fictional bank through Lakeflow pipelines, AI Functions, metric views, Genie Agents, and a Lakebase-served talent watchlist.
 
 ## Banking Problem
 
@@ -44,7 +44,7 @@ Aita connects workforce, talent, and recruiting signals before they create servi
 ## Reviewer Path
 
 Read these 15 files in order for the architecture, executable path, governance, and proof:
-Budget: 102 tracked files (96 UTF-8 text, 6 images) and 442,074 text characters; this path is 15 files and 76,255 characters; files over 9,000 characters: 5.
+Budget: 102 tracked files (96 UTF-8 text, 6 images) and 442,073 text characters; this path is 15 files and 76,254 characters; files over 9,000 characters: 5.
 
 1. `README.md`
 2. `databricks.yml`
@@ -118,7 +118,7 @@ Agents use metric views first; detail views support approved employee workflows.
 
 ## One-Time Setup
 
-Create these objects if they are not already present:
+Create these objects if missing:
 
 ```sql
 CREATE SCHEMA IF NOT EXISTS genie_workbench_dev_catalog.aita_bronze;

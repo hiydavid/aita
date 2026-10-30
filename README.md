@@ -23,7 +23,7 @@ Aita connects workforce, talent, and recruiting signals before they create servi
 ## Design Decisions
 
 - **Governed semantics:** calculations stay in metric views, grain changes in helper views, and historical attributes on facts.
-- **Cost-aware AI:** private lookups cache distinct normalized text; the synthetic refresh uses 152 calls instead of about 383,492 per-row calls.
+- **Cost-aware AI:** distinct-text lookups suit this synthetic data (152 calls per refresh); real comments are mostly unique, so production would classify each new comment once as it streams in.
 - **Attributable agents:** a code-defined router delegates to three narrow on-behalf-of-user Agents with SQL and source provenance.
 - **Fit-for-purpose serving:** the lakehouse stays authoritative; Lakebase serves the watchlist and user-scoped threads.
 - **No governance bypass:** masks stay active, signals require human review, and the app stays owner-only until account-level groups enable shared access.
@@ -44,7 +44,7 @@ Aita connects workforce, talent, and recruiting signals before they create servi
 ## Reviewer Path
 
 Read these 15 files in order for the architecture, executable path, governance, and proof:
-Budget: 102 tracked files (96 UTF-8 text, 6 images) and 442,009 text characters; this path is 15 files and 76,206 characters; files over 9,000 characters: 5.
+Budget: 102 tracked files (96 UTF-8 text, 6 images) and 442,074 text characters; this path is 15 files and 76,255 characters; files over 9,000 characters: 5.
 
 1. `README.md`
 2. `databricks.yml`

@@ -19,7 +19,7 @@ import {
 } from '@databricks/appkit-ui/react';
 import { Bot, Database, Send } from 'lucide-react';
 import { AGENT_DEFINITIONS, type RoutingCase } from '../../shared/routing';
-import { AssistantAnswer, ChatEvidence, type ChatMessage } from './ChatAnswer';
+import { AnswerMarkdown, AssistantAnswer, ChatEvidence, type ChatMessage } from './ChatAnswer';
 
 interface ChatConversationProps {
   chatError: string | null;
@@ -91,7 +91,7 @@ export function ChatConversation({
             <Card className="max-w-4xl">
               <CardContent className="space-y-4 pt-6">
                 {liveContent ? (
-                  <div className="whitespace-pre-wrap text-sm leading-6">{liveContent}</div>
+                  <AnswerMarkdown content={liveContent} />
                 ) : (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-3/4" />

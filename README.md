@@ -44,7 +44,7 @@ Aita connects workforce, talent, and recruiting signals before they create servi
 ## Reviewer Path
 
 Read these 15 files in order for the architecture, executable path, governance, and proof:
-Budget: 102 tracked files (96 UTF-8 text, 6 images) and 442,073 text characters; this path is 15 files and 76,254 characters; files over 9,000 characters: 5.
+Budget: 102 tracked files (96 UTF-8 text, 6 images) and 443,234 text characters; this path is 15 files and 76,254 characters; files over 9,000 characters: 5.
 
 1. `README.md`
 2. `databricks.yml`

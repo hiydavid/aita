@@ -1,6 +1,28 @@
-import { Badge, Card, CardContent, CardHeader, CardTitle } from '@databricks/appkit-ui/react';
+import { Badge, Card, CardContent, CardHeader, CardTitle, cn } from '@databricks/appkit-ui/react';
+import DOMPurify from 'dompurify';
+import { marked } from 'marked';
+import { useMemo } from 'react';
 import { AGENT_DEFINITIONS } from '../../shared/routing';
 import type { AgentEvidence } from './chat-evidence';
+
+// Same renderer as AppKit's Genie chat: GFM markdown, sanitized before it reaches the DOM.
+marked.setOptions({ breaks: true, gfm: true });
+
+const markdownStyles = cn(
+  'text-sm leading-6 break-words',
+  '[&_p]:my-2 [&_strong]:font-semibold [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold',
+  '[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-0.5',
+  '[&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:text-xs',
+  '[&_table]:my-3 [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_table]:text-xs',
+  '[&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:text-left [&_th]:font-medium',
+  '[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1',
+  '[&_a]:underline'
+);
+
+export function AnswerMarkdown({ content }: { content: string }) {
+  const html = useMemo(() => DOMPurify.sanitize(marked.parse(content, { async: false })), [content]);
+  return <div className={markdownStyles} dangerouslySetInnerHTML={{ __html: html }} />;
+}
 
 export interface ChatMessage {
   id: string;
@@ -57,7 +79,7 @@ export function AssistantAnswer({ item }: { item: ChatMessage }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="whitespace-pre-wrap text-sm leading-6">{item.content}</div>
+        <AnswerMarkdown content={item.content} />
         <ChatEvidence evidence={item.evidence ?? []} />
         <p className="text-xs text-muted-foreground">
           AI-generated from governed data via Genie — verify against the SQL and source. Watchlist signals require human

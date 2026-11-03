@@ -1,11 +1,9 @@
 # Project-specific
 backup/
-docs/
-AGENTS.md
 .isaac/
 .vscode/
-deck/
 .DS_Store
+deck/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
